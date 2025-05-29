@@ -221,51 +221,78 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
         
         # Test 2: Simple GET request
         try:
-            url = "https://api.tiny.com.br/api/v3/produtos/892471503"
             headers = {
                 "Authorization": f"Bearer {token}",
                 "Accept": "application/json"
             }
             
-            results.append(f"\nURL: {url}")
-            results.append(f"Headers: {headers}")
+            # Test 1: Check if API is reachable without auth
+            results.append("\n=== Testing API availability (no auth) ===")
+            base_url = "https://api.tiny.com.br/api/v3"
+            try:
+                base_response = requests.get(base_url, timeout=10)
+                results.append(f"Base API Status: {base_response.status_code}")
+            except Exception as e:
+                results.append(f"Base API Error: {str(e)}")
             
-            # First test with a simpler endpoint
-            results.append("\n=== Testing account info endpoint ===")
-            info_url = "https://api.tiny.com.br/api/v3/empresas"
-            info_response = requests.get(info_url, headers=headers, timeout=10)
-            results.append(f"Account Info Status: {info_response.status_code}")
-            results.append(f"Account Info Response: {info_response.text[:200]}")
+            # Test 2: Empresas endpoint
+            results.append("\n=== Testing empresas endpoint ===")
+            empresas_url = "https://api.tiny.com.br/api/v3/empresas"
+            empresas_response = requests.get(empresas_url, headers=headers, timeout=10)
+            results.append(f"Empresas Status: {empresas_response.status_code}")
+            if empresas_response.status_code != 200:
+                results.append(f"Empresas Response: {empresas_response.text[:300]}")
+                results.append(f"Empresas Headers: {dict(empresas_response.headers)}")
             
-            results.append("\n=== Testing product endpoint ===")
-            response = requests.get(url, headers=headers, timeout=10)
+            # Test 3: Product endpoint by ID
+            results.append("\n=== Testing product by ID ===")
+            product_url = "https://api.tiny.com.br/api/v3/produtos/892471503"
+            product_response = requests.get(product_url, headers=headers, timeout=10)
+            results.append(f"Product Status: {product_response.status_code}")
+            if product_response.status_code != 200:
+                results.append(f"Product Response: {product_response.text[:300]}")
             
-            results.append(f"Status Code: {response.status_code}")
-            results.append(f"Response Headers: {dict(response.headers)}")
-            results.append(f"Response Text: {response.text[:500]}")
+            # Test 4: Stock endpoint (estoque)
+            results.append("\n=== Testing stock endpoint ===")
+            stock_url = "https://api.tiny.com.br/api/v3/estoque/892471503"
+            stock_response = requests.get(stock_url, headers=headers, timeout=10)
+            results.append(f"Stock Status: {stock_response.status_code}")
+            if stock_response.status_code != 200:
+                results.append(f"Stock Response: {stock_response.text[:300]}")
             
-            if response.status_code == 401:
-                results.append("ERROR: Token inválido ou expirado")
-            elif response.status_code == 404:
-                results.append("ERROR: Endpoint não encontrado")
+            # Test 5: Try with different auth header format
+            results.append("\n=== Testing with lowercase 'bearer' ===")
+            headers2 = {
+                "authorization": f"bearer {token}",
+                "accept": "application/json"
+            }
+            test_response = requests.get(product_url, headers=headers2, timeout=10)
+            results.append(f"Lowercase bearer Status: {test_response.status_code}")
                 
         except requests.exceptions.RequestException as e:
             results.append(f"Request Exception: {str(e)}")
         except Exception as e:
             results.append(f"General Exception: {str(e)}")
         
-        # Test 3: Alternative endpoint
+        # Test 3: List products with filters
         try:
-            url2 = "https://api.tiny.com.br/api/v3/produtos"
-            params = {"codigo": "PH-504", "pagina": 1}
-            results.append(f"\nAlternative URL: {url2}")
-            results.append(f"Params: {params}")
+            results.append("\n=== Testing products list ===")
+            list_url = "https://api.tiny.com.br/api/v3/produtos"
             
-            response2 = requests.get(url2, params=params, headers=headers, timeout=10)
-            results.append(f"Alt Status: {response2.status_code}")
-            results.append(f"Alt Response: {response2.text[:200]}")
+            # Test without params
+            results.append("Without params:")
+            list_response = requests.get(list_url, headers=headers, timeout=10)
+            results.append(f"Status: {list_response.status_code}")
+            
+            # Test with codigo param
+            params = {"codigo": "PH-504", "pagina": 1}
+            results.append(f"\nWith params: {params}")
+            filtered_response = requests.get(list_url, params=params, headers=headers, timeout=10)
+            results.append(f"Status: {filtered_response.status_code}")
+            if filtered_response.status_code != 200:
+                results.append(f"Response: {filtered_response.text[:200]}")
         except Exception as e:
-            results.append(f"Alt Exception: {str(e)}")
+            results.append(f"List Exception: {str(e)}")
         
         return True, '\n'.join(results)
     
