@@ -212,6 +212,7 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
                 import time
                 current_time = time.time()
                 
+                import datetime
                 results.append(f"Token issued at: {datetime.datetime.fromtimestamp(iat)}")
                 results.append(f"Token expires at: {datetime.datetime.fromtimestamp(exp)}")
                 results.append(f"Token valid: {current_time < exp}")
@@ -230,69 +231,109 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
             results.append("\n=== Testing API availability (no auth) ===")
             base_url = "https://api.tiny.com.br/api/v3"
             try:
-                base_response = requests.get(base_url, timeout=10)
+                # Try with User-Agent header
+                base_headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "application/json"
+                }
+                base_response = requests.get(base_url, headers=base_headers, timeout=10)
                 results.append(f"Base API Status: {base_response.status_code}")
+                if base_response.status_code == 403:
+                    results.append("Note: API is blocking requests without proper auth/headers")
             except Exception as e:
                 results.append(f"Base API Error: {str(e)}")
             
-            # Test 2: Empresas endpoint
-            results.append("\n=== Testing empresas endpoint ===")
+            # Test 2: Try with complete headers
+            results.append("\n=== Testing with complete headers ===")
+            full_headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "TinyERP-Dashboard/1.0",
+                "X-Requested-With": "XMLHttpRequest"
+            }
+            
+            # Test empresas endpoint with full headers
             empresas_url = "https://api.tiny.com.br/api/v3/empresas"
-            empresas_response = requests.get(empresas_url, headers=headers, timeout=10)
+            empresas_response = requests.get(empresas_url, headers=full_headers, timeout=10)
             results.append(f"Empresas Status: {empresas_response.status_code}")
             if empresas_response.status_code != 200:
-                results.append(f"Empresas Response: {empresas_response.text[:300]}")
-                results.append(f"Empresas Headers: {dict(empresas_response.headers)}")
+                results.append(f"Response: {empresas_response.text[:200]}")
+            else:
+                results.append("SUCCESS! Found working headers configuration")
+                results.append(f"Response: {empresas_response.text[:200]}")
             
-            # Test 3: Product endpoint by ID
-            results.append("\n=== Testing product by ID ===")
+            # Test 3: Try with session to handle cookies
+            results.append("\n=== Testing with session (handles cookies) ===")
+            session = requests.Session()
+            session.headers.update({
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            })
+            
+            # First request to get cookies
             product_url = "https://api.tiny.com.br/api/v3/produtos/892471503"
-            product_response = requests.get(product_url, headers=headers, timeout=10)
-            results.append(f"Product Status: {product_response.status_code}")
-            if product_response.status_code != 200:
-                results.append(f"Product Response: {product_response.text[:300]}")
+            session_response = session.get(product_url, timeout=10)
+            results.append(f"Session Status: {session_response.status_code}")
+            results.append(f"Cookies: {session.cookies.get_dict()}")
             
-            # Test 4: Stock endpoint (estoque)
-            results.append("\n=== Testing stock endpoint ===")
-            stock_url = "https://api.tiny.com.br/api/v3/estoque/892471503"
-            stock_response = requests.get(stock_url, headers=headers, timeout=10)
-            results.append(f"Stock Status: {stock_response.status_code}")
-            if stock_response.status_code != 200:
-                results.append(f"Stock Response: {stock_response.text[:300]}")
+            if session_response.status_code == 403:
+                # Try again after getting cookies
+                retry_response = session.get(product_url, timeout=10)
+                results.append(f"Retry Status: {retry_response.status_code}")
             
-            # Test 5: Try with different auth header format
-            results.append("\n=== Testing with lowercase 'bearer' ===")
-            headers2 = {
-                "authorization": f"bearer {token}",
-                "accept": "application/json"
+            # Test 5: Try curl-style request
+            results.append("\n=== Testing with curl-style headers ===")
+            curl_headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "*/*",
+                "User-Agent": "curl/7.68.0"
             }
-            test_response = requests.get(product_url, headers=headers2, timeout=10)
-            results.append(f"Lowercase bearer Status: {test_response.status_code}")
+            curl_response = requests.get(product_url, headers=curl_headers, timeout=10)
+            results.append(f"Curl-style Status: {curl_response.status_code}")
+            
+            # Test 6: Check token details from JWT
+            results.append("\n=== Token Analysis ===")
+            if 'exp' in locals() and 'current_time' in locals():
+                results.append(f"Time until expiration: {(exp - current_time)/3600:.2f} hours")
+            if 'token_data' in locals():
+                results.append(f"Token scope: {token_data.get('scope', 'Not found')}")
+                results.append(f"Token type: {token_data.get('typ', 'Not found')}")
+                results.append(f"Token aud: {token_data.get('aud', 'Not found')}")
+                results.append(f"Token iss: {token_data.get('iss', 'Not found')}")
+            
+            # Test 7: Show redirect URI config
+            results.append("\n=== OAuth Configuration ===")
+            results.append(f"Configured redirect URI: {tiny_oauth.redirect_uri}")
+            results.append(f"Client ID: {tiny_oauth.client_id[:20]}...")
+            import os
+            results.append(f"Current host: {os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'localhost')}")
                 
         except requests.exceptions.RequestException as e:
             results.append(f"Request Exception: {str(e)}")
         except Exception as e:
             results.append(f"General Exception: {str(e)}")
         
-        # Test 3: List products with filters
-        try:
-            results.append("\n=== Testing products list ===")
-            list_url = "https://api.tiny.com.br/api/v3/produtos"
-            
-            # Test without params
-            results.append("Without params:")
-            list_response = requests.get(list_url, headers=headers, timeout=10)
-            results.append(f"Status: {list_response.status_code}")
-            
-            # Test with codigo param
-            params = {"codigo": "PH-504", "pagina": 1}
-            results.append(f"\nWith params: {params}")
-            filtered_response = requests.get(list_url, params=params, headers=headers, timeout=10)
-            results.append(f"Status: {filtered_response.status_code}")
-            if filtered_response.status_code != 200:
-                results.append(f"Response: {filtered_response.text[:200]}")
-        except Exception as e:
-            results.append(f"List Exception: {str(e)}")
+        # Test 3: Check if we need to use a different base URL
+        results.append("\n=== Testing alternative endpoints ===")
+        
+        # Try erp.tiny.com.br instead of api.tiny.com.br
+        alt_urls = [
+            "https://erp.tiny.com.br/api/v3/produtos/892471503",
+            "https://api.tiny.com.br/openapi/v3/produtos/892471503",
+            "https://tiny.com.br/api/v3/produtos/892471503"
+        ]
+        
+        for alt_url in alt_urls:
+            try:
+                results.append(f"\nTrying: {alt_url}")
+                alt_response = requests.get(alt_url, headers=headers, timeout=5)
+                results.append(f"Status: {alt_response.status_code}")
+                if alt_response.status_code != 403:
+                    results.append(f"Different response! Body: {alt_response.text[:200]}")
+            except Exception as e:
+                results.append(f"Error: {str(e)}")
         
         return True, '\n'.join(results)
     
