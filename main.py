@@ -14,9 +14,8 @@ app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     dcc.Store(id='user-authenticated', storage_type='session'),
     dcc.Store(id='tiny-connected', storage_type='session'),
-    html.Div(id='page-content'),
-    # Hidden div to trigger JavaScript
-    html.Div(id='redirect-trigger', style={'display': 'none'})
+    dcc.Store(id='tiny-auth-url'),
+    html.Div(id='page-content')
 ])
 
 @app.callback([Output('page-content', 'children'),
@@ -65,16 +64,32 @@ def logout(n_clicks):
     return '/'
 
 # Tiny OAuth callbacks
-@app.callback(Output('redirect-trigger', 'children'),
+@app.callback(Output('tiny-auth-url', 'data'),
               Input('tiny-connect-button', 'n_clicks'),
               prevent_initial_call=True)
-def tiny_connect(n_clicks):
+def get_tiny_auth_url(n_clicks):
+    print(f"[DEBUG] get_tiny_auth_url called with n_clicks: {n_clicks}")
     if n_clicks:
         auth_url = tiny_oauth.get_auth_url()
-        print(f"[DEBUG] Redirecting to: {auth_url}")
-        # Return JavaScript to redirect
-        return html.Script(f'window.location.href = "{auth_url}";')
+        print(f"[DEBUG] Generated auth URL: {auth_url}")
+        return auth_url
     return dash.no_update
+
+# Client-side callback to handle redirect
+app.clientside_callback(
+    """
+    function(url) {
+        if (url) {
+            console.log('[DEBUG] Redirecting to:', url);
+            window.location.href = url;
+        }
+        return '';
+    }
+    """,
+    Output('url', 'pathname', allow_duplicate=True),
+    Input('tiny-auth-url', 'data'),
+    prevent_initial_call=True
+)
 
 @app.callback([Output('tiny-status', 'children'),
                Output('product-info', 'children'),
@@ -112,6 +127,15 @@ def update_tiny_status(connected):
         return status, product_info, debug_msg
     
     return dbc.Alert("Não conectado", color="secondary"), "", debug_msg
+
+@app.callback(Output('debug-live', 'children'),
+              Input('debug-interval', 'n_intervals'))
+def update_debug_live(n):
+    """Live debug info"""
+    import datetime
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    token = tiny_oauth.get_access_token()
+    return f"Last update: {current_time}\nToken exists: {token is not None}"
 
 if __name__ == '__main__':
     import os

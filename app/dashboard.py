@@ -99,7 +99,10 @@ def create_dashboard_layout():
                 dbc.Card([
                     dbc.CardBody([
                         html.H4("Debug Console", className="card-title"),
-                        html.Div(id="debug-output", style={'whiteSpace': 'pre-line', 'fontSize': '12px', 'fontFamily': 'monospace'})
+                        html.Div(id="debug-output", style={'whiteSpace': 'pre-line', 'fontSize': '12px', 'fontFamily': 'monospace'}),
+                        html.Hr(),
+                        dcc.Interval(id='debug-interval', interval=2000),  # Update every 2 seconds
+                        html.Div(id="debug-live", style={'whiteSpace': 'pre-line', 'fontSize': '10px', 'fontFamily': 'monospace', 'color': 'green'})
                     ])
                 ], className="mt-4")
             ], width=12, md=6)
