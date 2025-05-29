@@ -22,6 +22,7 @@ def create_dashboard_layout():
             dark=True,
             children=[
                 dbc.NavItem(dbc.Button("Test API", id="test-api-button", color="info", size="sm", className="me-2")),
+                dbc.NavItem(dbc.Button("ULTRA DEBUG", id="ultra-debug-button", color="warning", size="sm", className="me-2")),
                 dbc.NavItem(dbc.Button("Conectar ao Tiny", id="tiny-connect-button", color="success", size="sm", className="me-2")),
                 dbc.NavItem(dbc.Button("Sair", id="logout-button", color="danger", size="sm"))
             ]

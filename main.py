@@ -468,6 +468,27 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
     # Close button clicked
     return False, "", dash.no_update
 
+# Callback for ULTRA DEBUG button
+@app.callback(
+    [Output('test-modal', 'is_open', allow_duplicate=True),
+     Output('api-test-results', 'children', allow_duplicate=True),
+     Output('debug-download-data', 'data', allow_duplicate=True)],
+    Input('ultra-debug-button', 'n_clicks'),
+    prevent_initial_call=True
+)
+def ultra_debug(n_clicks):
+    if n_clicks:
+        print("[ULTRA DEBUG] Starting ultra verbose debug...")
+        debug_data = tiny_oauth.ultra_verbose_debug()
+        
+        # Format for display
+        formatted_output = json.dumps(debug_data, indent=2)
+        
+        # Also save to file for download
+        return True, formatted_output, formatted_output
+    
+    return dash.no_update, dash.no_update, dash.no_update
+
 # Callback for download button
 @app.callback(
     Output('download-debug', 'data'),

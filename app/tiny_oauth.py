@@ -318,40 +318,186 @@ class TinyOAuth:
                 except Exception as e:
                     print(f"[DEBUG] File removal error: {str(e)}")
     
-    def test_api_connection(self):
-        """Test API connection with detailed debugging"""
+    def ultra_verbose_debug(self):
+        """ULTRA VERBOSE debugging - deixar TUDO claro!"""
+        import base64
+        import json as json_lib
+        from datetime import datetime
+        
+        debug_info = {
+            "timestamp": datetime.now().isoformat(),
+            "tests": []
+        }
+        
+        # TEST 1: Token Analysis
         token = self.get_access_token()
         if not token:
-            return {"error": "No token available"}
+            debug_info["tests"].append({"test": "token_check", "result": "NO TOKEN FOUND!"})
+            return debug_info
         
-        results = {}
+        debug_info["tests"].append({
+            "test": "token_exists", 
+            "result": "YES",
+            "token_length": len(token),
+            "token_preview": f"{token[:50]}...{token[-20:]}"
+        })
         
-        # Test 1: Simple GET with minimal headers
-        headers_minimal = {
-            'Authorization': f'Bearer {token}'
-        }
+        # Decode JWT token completely
+        try:
+            parts = token.split('.')
+            if len(parts) == 3:
+                # Decode header
+                header = base64.b64decode(parts[0] + '=' * (4 - len(parts[0]) % 4))
+                header_data = json_lib.loads(header)
+                
+                # Decode payload
+                payload = base64.b64decode(parts[1] + '=' * (4 - len(parts[1]) % 4))
+                payload_data = json_lib.loads(payload)
+                
+                debug_info["tests"].append({
+                    "test": "jwt_decode",
+                    "result": "SUCCESS",
+                    "header": header_data,
+                    "payload": payload_data,
+                    "all_claims": list(payload_data.keys()),
+                    "roles": payload_data.get('roles', {}),
+                    "email": payload_data.get('email', 'NOT FOUND'),
+                    "sub": payload_data.get('sub', 'NOT FOUND'),
+                    "empresa_related_fields": {k: v for k, v in payload_data.items() if 'emp' in k.lower() or 'company' in k.lower()}
+                })
+        except Exception as e:
+            debug_info["tests"].append({
+                "test": "jwt_decode",
+                "result": "FAILED",
+                "error": str(e)
+            })
         
-        # Test 2: Full headers
-        headers_full = {
-            'Authorization': f'Bearer {token}',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
+        # TEST 2: Try EVERY possible header combination
+        base_headers = [
+            {"Authorization": f"Bearer {token}"},
+            {"Authorization": f"Bearer {token}", "Accept": "application/json"},
+            {"Authorization": f"Bearer {token}", "Accept": "application/json", "Content-Type": "application/json"},
+            {"Authorization": f"Bearer {token}", "Accept": "*/*"},
+            {"Authorization": token},  # Without Bearer
+            {"Authorization": f"Bearer {token}", "X-Empresa": "phoenixfundicao"},
+            {"Authorization": f"Bearer {token}", "X-Company": "phoenixfundicao"},
+            {"Authorization": f"Bearer {token}", "X-Empresa-Id": "phoenixfundicao"},
+            {"Authorization": f"Bearer {token}", "X-Tenant": "phoenixfundicao"},
+        ]
         
-        test_url = f"{self.api_base_url}/produtos?limit=1"
+        # TEST 3: Try MANY different endpoints (including empresa-specific)
+        test_endpoints = [
+            "/produtos?limit=1",
+            "/produtos",
+            "/info-conta",
+            "/empresas",
+            "/empresas/phoenixfundicao",
+            "/empresa/phoenixfundicao/produtos",
+            "/phoenixfundicao/produtos",
+            "/conta",
+            "/user",
+            "/me",
+            "/whoami",
+            "/api/info",
+            "/info",
+            "/empresa",
+            "/empresa/phoenixfundicao",
+            "/",
+            "",
+        ]
         
-        for header_type, headers in [("minimal", headers_minimal), ("full", headers_full)]:
-            try:
-                response = requests.get(test_url, headers=headers, timeout=5)
-                results[header_type] = {
-                    "status": response.status_code,
-                    "headers": dict(response.headers),
-                    "body": response.text[:500]
-                }
-            except Exception as e:
-                results[header_type] = {"error": str(e)}
+        # TEST 4: Try different base URLs too!
+        base_urls = [
+            "https://api.tiny.com.br/public-api/v3",
+            "https://api.tiny.com.br/api/v3",
+            "https://api.tiny.com.br/v3",
+            "https://api.tiny.com.br/openapi/v3",
+            "https://erp.tiny.com.br/public-api/v3",
+            "https://erp.tiny.com.br/api/v3",
+        ]
         
-        return results
+        # Test each combination (but limit to avoid timeout)
+        test_count = 0
+        for base_url in base_urls[:3]:  # Test first 3 base URLs
+            for endpoint in test_endpoints[:5]:  # Test first 5 endpoints
+                for headers in base_headers[:5]:  # Test first 5 header combinations
+                    test_count += 1
+                    test_info = {
+                        "test_number": test_count,
+                        "base_url": base_url,
+                        "endpoint": endpoint,
+                        "full_url": f"{base_url}{endpoint}",
+                        "headers": headers
+                    }
+                    
+                    try:
+                        response = requests.get(
+                            f"{base_url}{endpoint}", 
+                            headers=headers, 
+                            timeout=2,
+                            allow_redirects=False
+                        )
+                        
+                        test_info["response"] = {
+                            "status_code": response.status_code,
+                            "reason": response.reason,
+                            "headers": dict(response.headers),
+                            "body_length": len(response.text),
+                            "body": response.text[:1000],  # First 1000 chars
+                            "is_json": False
+                        }
+                        
+                        # Try to parse as JSON
+                        try:
+                            json_body = response.json()
+                            test_info["response"]["is_json"] = True
+                            test_info["response"]["json_body"] = json_body
+                        except:
+                            pass
+                        
+                        # Special attention to 401 responses
+                        if response.status_code == 401:
+                            test_info["401_analysis"] = {
+                                "www_authenticate": response.headers.get('WWW-Authenticate', 'NOT PRESENT'),
+                                "body_contains_empresa": 'empresa' in response.text.lower(),
+                                "body_contains_company": 'company' in response.text.lower(),
+                                "body_contains_tenant": 'tenant' in response.text.lower(),
+                                "body_contains_phoenix": 'phoenix' in response.text.lower()
+                            }
+                        
+                    except Exception as e:
+                        test_info["response"] = {
+                            "error": str(e),
+                            "error_type": type(e).__name__
+                        }
+                    
+                    debug_info["tests"].append(test_info)
+                    
+                    # If we find a successful response, highlight it!
+                    if test_info.get("response", {}).get("status_code") == 200:
+                        debug_info["SUCCESS_FOUND"] = test_info
+                        break
+        
+        # TEST 5: Raw curl equivalent
+        import subprocess
+        try:
+            curl_command = [
+                'curl', '-v',
+                '-H', f'Authorization: Bearer {token}',
+                '-H', 'Accept: application/json',
+                'https://api.tiny.com.br/public-api/v3/produtos?limit=1'
+            ]
+            curl_result = subprocess.run(curl_command, capture_output=True, text=True, timeout=5)
+            debug_info["curl_test"] = {
+                "command": ' '.join(curl_command),
+                "stdout": curl_result.stdout[:500],
+                "stderr": curl_result.stderr[:500],
+                "return_code": curl_result.returncode
+            }
+        except Exception as e:
+            debug_info["curl_test"] = {"error": str(e)}
+        
+        return debug_info
     
     def fetch_product(self, search_term):
         """
