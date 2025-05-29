@@ -1,18 +1,14 @@
 # Use Python 3.12 slim image
 FROM python:3.12-slim
 
-# Install UV
-RUN pip install uv
-
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY pyproject.toml .
-COPY .python-version .
+# Copy requirements file (keep for Railway compatibility)
+COPY requirements.txt .
 
-# Install dependencies with UV (creates venv automatically)
-RUN uv sync --frozen --no-dev
+# Install dependencies with pip (Railway-compatible approach)
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
@@ -24,5 +20,5 @@ EXPOSE 8050
 ENV PORT=8050
 ENV DEBUG=False
 
-# Run with UV
-CMD ["uv", "run", "gunicorn", "main:server", "--bind", "0.0.0.0:8050"]
+# Run with gunicorn
+CMD ["gunicorn", "main:server", "--bind", "0.0.0.0:8050"]

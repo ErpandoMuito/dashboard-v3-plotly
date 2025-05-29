@@ -48,23 +48,17 @@ uv remove nome-do-pacote
 uv sync --upgrade
 ```
 
-## 🛠️ Scripts Disponíveis
+## 🛠️ Executar Aplicação
 
 ```bash
-# Executar servidor de desenvolvimento
-uv run dev
+# Modo desenvolvimento
+uv run python main.py
 
-# Executar servidor de produção
-uv run start
+# Modo produção
+uv run gunicorn main:server
 
-# Formatar código
-uv run format
-
-# Verificar código
-uv run lint
-
-# Executar testes
-uv run test
+# Com porta customizada
+PORT=3000 uv run python main.py
 ```
 
 ## 🐳 Docker

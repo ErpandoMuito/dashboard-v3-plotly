@@ -13,8 +13,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
 # Run development server
-uv run dev
-# or
 uv run python main.py
 ```
 
@@ -29,7 +27,7 @@ python main.py
 **Production mode:**
 ```bash
 # With UV
-uv run start
+uv run gunicorn main:server
 
 # With traditional setup
 gunicorn main:server

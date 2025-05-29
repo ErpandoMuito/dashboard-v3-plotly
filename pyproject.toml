@@ -41,13 +41,6 @@ dev-dependencies = [
     "mypy>=1.5.0",
 ]
 
-[tool.uv.scripts]
-dev = "python main.py"
-start = "gunicorn main:server --bind 0.0.0.0:${PORT:-8050}"
-format = "black . && ruff check . --fix"
-lint = "black --check . && ruff check . && mypy ."
-test = "pytest tests/ -v --cov=app"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
