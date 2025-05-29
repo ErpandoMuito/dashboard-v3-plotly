@@ -80,11 +80,18 @@ def login(n_clicks, username, password):
         return None, '/', dbc.Alert("Usuário ou senha inválidos!", color="danger")
     return None, '/', dbc.Alert("Preencha todos os campos!", color="warning")
 
-@app.callback(Output('url', 'pathname', allow_duplicate=True),
+@app.callback([Output('url', 'pathname', allow_duplicate=True),
+               Output('user-authenticated', 'data', allow_duplicate=True),
+               Output('tiny-connected', 'data', allow_duplicate=True)],
               Input('logout-button', 'n_clicks'),
               prevent_initial_call=True)
 def logout(n_clicks):
-    return '/'
+    if n_clicks:
+        # Clear Tiny OAuth tokens
+        tiny_oauth.logout()
+        # Clear session data
+        return '/', None, False
+    return dash.no_update, dash.no_update, dash.no_update
 
 # Tiny OAuth callbacks
 @app.callback(Output('tiny-auth-url', 'data'),

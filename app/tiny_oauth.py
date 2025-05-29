@@ -122,20 +122,40 @@ class TinyOAuth:
         }
         
         # Try a simple endpoint to validate the token
-        test_url = f"{self.api_base_url}/empresas"
+        # First try the produtos endpoint which is more commonly available
+        test_urls = [
+            f"{self.api_base_url}/produtos?pagina=1&numeroRegistros=1",
+            f"{self.api_base_url}/empresas",
+            "https://api.tiny.com.br/api/v3/info"  # Try info endpoint
+        ]
         
-        try:
-            response = requests.get(test_url, headers=headers, timeout=5)
-            if response.status_code == 200:
-                return True, "Token is valid"
-            elif response.status_code == 401:
-                return False, "Token is expired or invalid"
-            elif response.status_code == 403:
-                return False, "Access forbidden - may need to re-authenticate"
-            else:
-                return False, f"Unexpected status: {response.status_code}"
-        except Exception as e:
-            return False, f"Error validating token: {str(e)}"
+        for test_url in test_urls:
+            try:
+                print(f"[DEBUG] Testing token with URL: {test_url}")
+                response = requests.get(test_url, headers=headers, timeout=5)
+                print(f"[DEBUG] Token test response: {response.status_code}")
+                
+                if response.status_code == 200:
+                    return True, "Token is valid"
+                elif response.status_code == 401:
+                    # Try to refresh token
+                    tokens = self._get_stored_tokens()
+                    if tokens and tokens.get('refresh_token'):
+                        new_token = self._refresh_token(tokens.get('refresh_token'))
+                        if new_token:
+                            return True, "Token refreshed successfully"
+                    return False, "Token is expired or invalid"
+                elif response.status_code == 403:
+                    print(f"[DEBUG] 403 Response body: {response.text[:200]}")
+                    continue  # Try next URL
+                elif response.status_code == 404:
+                    print(f"[DEBUG] 404 - Endpoint not found: {test_url}")
+                    continue  # Try next URL
+            except Exception as e:
+                print(f"[DEBUG] Error testing {test_url}: {str(e)}")
+                continue
+        
+        return False, "Access forbidden - may need to re-authenticate"
     
     def _refresh_token(self, refresh_token):
         """Refresh access token"""
