@@ -128,10 +128,29 @@ class TinyOAuth:
                     return json.load(f)
         return None
     
-    def fetch_product(self, sku):
-        """Fetch product from Tiny API"""
+    def fetch_product(self, search_term):
+        """
+        Fetch product from Tiny API V3
+        First tries local DB, then searches Tiny API by ID, code, or name
+        """
+        # Import local to avoid circular import
+        from app.products_db import get_product_by_code, get_product_by_id
+        
+        # First try local database
+        local_product = get_product_by_code(search_term)
+        if local_product:
+            print(f"[DEBUG] Found product locally: {local_product}")
+            product_id = local_product['id']
+        else:
+            # Try to parse as ID
+            try:
+                product_id = int(search_term)
+            except ValueError:
+                product_id = None
+        
         token = self.get_access_token()
         if not token:
+            print("[DEBUG] No access token available")
             return None
             
         headers = {
@@ -139,10 +158,74 @@ class TinyOAuth:
             'Content-Type': 'application/json'
         }
         
-        url = f"{self.api_base_url}/produtos"
-        params = {'cpesquisa': sku}
+        # Method 1: Try direct ID search if we have an ID
+        if product_id:
+            url = f"{self.api_base_url}/produtos/{product_id}"
+            print(f"[DEBUG] Trying direct ID search: {url}")
+            
+            try:
+                response = requests.get(url, headers=headers)
+                print(f"[DEBUG] URL: {response.url}")
+                print(f"[DEBUG] Status: {response.status_code}")
+                print(f"[DEBUG] Headers sent: {headers}")
+                print(f"[DEBUG] Response: {response.text}")
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    # V3 returns single product, not array
+                    return {"data": [data], "registros": 1}
+                elif response.status_code == 401:
+                    print("[DEBUG] Token expired, attempting refresh")
+                    # Try to refresh token
+                    new_token = self._refresh_token(self._get_stored_tokens().get('refresh_token'))
+                    if new_token:
+                        headers['Authorization'] = f'Bearer {new_token}'
+                        response = requests.get(url, headers=headers)
+                        if response.status_code == 200:
+                            data = response.json()
+                            return {"data": [data], "registros": 1}
+            except Exception as e:
+                print(f"[DEBUG] Error in ID search: {str(e)}")
         
-        response = requests.get(url, headers=headers, params=params)
-        if response.status_code == 200:
-            return response.json()
+        # Method 2: Try search by code
+        url = f"{self.api_base_url}/produtos"
+        params = {
+            'pagina': 1,
+            'numeroRegistros': 50,
+            'codigo': search_term
+        }
+        
+        print(f"[DEBUG] Trying code search: {url} with params: {params}")
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            print(f"[DEBUG] URL: {response.url}")
+            print(f"[DEBUG] Status: {response.status_code}")
+            print(f"[DEBUG] Response: {response.text}")
+            
+            if response.status_code == 200:
+                return response.json()
+        except Exception as e:
+            print(f"[DEBUG] Error in code search: {str(e)}")
+        
+        # Method 3: Try search by name
+        params = {
+            'pagina': 1,
+            'numeroRegistros': 50,
+            'nome': search_term
+        }
+        
+        print(f"[DEBUG] Trying name search: {url} with params: {params}")
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            print(f"[DEBUG] URL: {response.url}")
+            print(f"[DEBUG] Status: {response.status_code}")
+            print(f"[DEBUG] Response: {response.text}")
+            
+            if response.status_code == 200:
+                return response.json()
+        except Exception as e:
+            print(f"[DEBUG] Error in name search: {str(e)}")
+        
         return None

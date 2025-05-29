@@ -96,11 +96,23 @@ app.clientside_callback(
                Output('debug-output', 'children')],
               Input('tiny-connected', 'data'))
 def update_tiny_status(connected):
+    from app.products_db import get_product_by_code
+    
     debug_msg = f"Connected status: {connected}\n"
     
+    # First test local database
+    debug_msg += "\n=== Testing Local Database ===\n"
+    local_product = get_product_by_code('PH-504')
+    if local_product:
+        debug_msg += f"Local DB: Found PH-504\n"
+        debug_msg += f"ID: {local_product['id']}\n"
+        debug_msg += f"Descrição: {local_product['descricao']}\n"
+        debug_msg += f"Preço: R$ {local_product['preco']}\n"
+        debug_msg += f"Marca: {local_product['marca']}\n"
+    
     if connected:
-        # Try to fetch product PH-504
-        debug_msg += "Fetching product PH-504...\n"
+        # Try to fetch product PH-504 from Tiny
+        debug_msg += "\n=== Fetching from Tiny API ===\n"
         product_data = tiny_oauth.fetch_product('PH-504')
         
         status = dbc.Alert("Conectado ao Tiny com sucesso!", color="success")
@@ -110,19 +122,38 @@ def update_tiny_status(connected):
             debug_msg += f"Products found: {len(products)}\n"
             if products:
                 product = products[0]
+                # Use V3 field names
                 product_info = dbc.Card([
                     dbc.CardBody([
-                        html.H5("Produto Encontrado:", className="card-title"),
-                        html.P(f"ID: {product.get('id', 'N/A')}"),
-                        html.P(f"Nome: {product.get('nome', 'N/A')}"),
-                        html.P(f"SKU: {product.get('codigo', 'N/A')}")
+                        html.H5("Produto Encontrado no Tiny:", className="card-title"),
+                        html.P([html.Strong("Código: "), product.get('codigo', 'N/A')]),
+                        html.P([html.Strong("ID: "), str(product.get('id', 'N/A'))]),
+                        html.P([html.Strong("Descrição: "), product.get('nome', product.get('descricao', 'N/A'))]),
+                        html.P([html.Strong("Preço: "), f"R$ {product.get('preco', 0):.2f}"]),
+                        html.P([html.Strong("Marca: "), product.get('marca', 'N/A')]),
+                        html.P([html.Strong("Situação: "), product.get('situacao', 'N/A')])
                     ])
-                ], color="info", outline=True)
+                ], color="info", outline=True, className="mt-3")
             else:
-                product_info = dbc.Alert("Produto PH-504 não encontrado", color="warning")
+                product_info = dbc.Alert("Produto PH-504 não encontrado no Tiny", color="warning")
         else:
             debug_msg += f"Error fetching product. Response: {product_data}\n"
-            product_info = dbc.Alert("Erro ao buscar produto", color="danger")
+            # Show local product if available
+            if local_product:
+                product_info = dbc.Card([
+                    dbc.CardBody([
+                        html.H5("Produto do Banco Local:", className="card-title"),
+                        html.P([html.Strong("Código: "), local_product.get('codigo', 'N/A')]),
+                        html.P([html.Strong("ID: "), str(local_product.get('id', 'N/A'))]),
+                        html.P([html.Strong("Descrição: "), local_product.get('descricao', 'N/A')]),
+                        html.P([html.Strong("Preço: "), f"R$ {local_product.get('preco', 0):.2f}"]),
+                        html.P([html.Strong("Marca: "), local_product.get('marca', 'N/A')]),
+                        html.Hr(),
+                        html.Small("⚠️ Dados do banco local - API Tiny não disponível", className="text-muted")
+                    ])
+                ], color="warning", outline=True, className="mt-3")
+            else:
+                product_info = dbc.Alert("Erro ao buscar produto", color="danger")
         
         return status, product_info, debug_msg
     
