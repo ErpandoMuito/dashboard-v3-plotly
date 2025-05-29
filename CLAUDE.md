@@ -77,6 +77,8 @@ The app uses session-based authentication via `dcc.Store` and supports automatic
 - **Procfile**: `web: gunicorn main:server`
 - **railway.json**: Specifies NIXPACKS builder and start command
 - Auto-deploys on push to GitHub branches
+- **Custom Domain**: Set `APP_DOMAIN=pxn.app.br` in Railway environment variables
+- **OAuth Redirect**: The redirect URI must match the domain used (update in Tiny OAuth settings if domain changes)
 
 ## Tiny API V3 Reference
 

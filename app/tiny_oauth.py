@@ -10,7 +10,23 @@ class TinyOAuth:
     def __init__(self):
         self.client_id = "tiny-api-0ec9fd177624e0c733a68cf61284a695e4f0d27f-1748519501"
         self.client_secret = "qTOelJ39VTV6nB6DsxFrm8bZcVZ9qTNY"
-        self.redirect_uri = "https://web-production-e80e8.up.railway.app/"
+        
+        # Check for environment variable or use the new domain
+        import os
+        # First check for custom domain, then Railway domain, then fallback
+        custom_domain = os.environ.get('APP_DOMAIN')
+        railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+        
+        if custom_domain:
+            self.redirect_uri = f"https://{custom_domain}/"
+        elif railway_domain:
+            self.redirect_uri = f"https://{railway_domain}/"
+        else:
+            # Fallback to your custom domain
+            self.redirect_uri = "https://pxn.app.br/"
+        
+        print(f"[DEBUG] Using redirect URI: {self.redirect_uri}")
+        
         self.auth_base_url = "https://accounts.tiny.com.br/realms/tiny/protocol/openid-connect"
         self.api_base_url = "https://api.tiny.com.br/api/v3"
         
@@ -288,7 +304,8 @@ class TinyOAuth:
             
         headers = {
             'Authorization': f'Bearer {token}',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'User-Agent': 'TinyERP-Dashboard/1.0'
         }
         
         # Method 1: Try direct ID search if we have an ID

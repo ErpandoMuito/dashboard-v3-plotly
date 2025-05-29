@@ -384,6 +384,28 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
         except Exception as e:
             results.append(f"Proxy note error: {str(e)}")
         
+        # Test 5: Check if the issue is with the specific endpoint
+        results.append("\n=== Testing different API patterns ===")
+        
+        # Test with company-specific endpoint pattern
+        test_patterns = [
+            "https://api.tiny.com.br/api/v3/info",
+            "https://api.tiny.com.br/api/info",
+            f"https://api.tiny.com.br/api/v3/produtos?token={token[:20]}...",  # Some APIs want token in query
+            "https://erp.tiny.com.br/openapi/v3/auth/verify"
+        ]
+        
+        for pattern in test_patterns:
+            try:
+                results.append(f"\nTrying: {pattern}")
+                test_response = requests.get(pattern, headers=headers, timeout=3)
+                results.append(f"Status: {test_response.status_code}")
+                if test_response.status_code != 403:
+                    results.append(f"Different! Headers: {dict(test_response.headers)}")
+                    results.append(f"Body preview: {test_response.text[:100]}")
+            except Exception as e:
+                results.append(f"Error: {str(e)}")
+        
         # Create debug data for download
         debug_info = {
             "timestamp": datetime.datetime.now().isoformat() if 'datetime' in globals() else "unknown",
