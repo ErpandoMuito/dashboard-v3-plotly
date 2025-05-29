@@ -4,22 +4,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-**Setup environment:**
+**Setup environment with UV (recommended - 100x faster than pip):**
+```bash
+# Install UV if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies (UV creates venv automatically)
+uv sync
+
+# Run development server
+uv run dev
+# or
+uv run python main.py
+```
+
+**Alternative setup with pip:**
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-```
-
-**Run locally:**
-```bash
 python main.py
 ```
-Access at http://localhost:8050
 
-**Run with gunicorn (production mode):**
+**Production mode:**
 ```bash
+# With UV
+uv run start
+
+# With traditional setup
 gunicorn main:server
+```
+
+**Manage dependencies:**
+```bash
+# Add dependency
+uv add package-name
+
+# Remove dependency
+uv remove package-name
+
+# Update all dependencies
+uv sync --upgrade
 ```
 
 ## Architecture

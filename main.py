@@ -168,8 +168,12 @@ def update_debug_live(n):
     token = tiny_oauth.get_access_token()
     return f"Last update: {current_time}\nToken exists: {token is not None}"
 
-if __name__ == '__main__':
+def run_server():
+    """Entry point for running the server"""
     import os
     port = int(os.environ.get('PORT', 8050))
     debug = os.environ.get('DEBUG', 'True').lower() == 'true'
     app.run_server(debug=debug, host='0.0.0.0', port=port)
+
+if __name__ == '__main__':
+    run_server()
