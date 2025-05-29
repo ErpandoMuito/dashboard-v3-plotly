@@ -60,9 +60,9 @@ class TinyOAuth:
     
     def get_auth_url(self):
         """Generate OAuth authorization URL"""
-        # Extended scopes for API V3 access
-        # Including all possible scopes that might be needed
-        scope = 'openid profile email offline_access api produtos empresas estoque contas-pagar contas-receber'
+        # Use only the scopes that we know work
+        # We'll start with the basic ones and can add more if needed
+        scope = 'openid profile email offline_access'
         
         params = {
             'client_id': self.client_id,
