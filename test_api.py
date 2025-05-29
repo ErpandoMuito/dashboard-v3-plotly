@@ -23,9 +23,9 @@ def test_api():
     
     # Test endpoints
     endpoints = [
-        ('info-conta', 'https://api.tiny.com.br/public-api/v3/info-conta'),
-        ('produtos', 'https://api.tiny.com.br/public-api/v3/produtos?limit=1'),
-        ('categorias', 'https://api.tiny.com.br/public-api/v3/categorias/todas')
+        ('info-conta', 'https://api.tiny.com.br/api/v3/info-conta'),
+        ('produtos', 'https://api.tiny.com.br/api/v3/produtos?limit=1'),
+        ('categorias', 'https://api.tiny.com.br/api/v3/categorias/todas')
     ]
     
     headers = {

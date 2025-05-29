@@ -82,7 +82,7 @@ The app uses session-based authentication via `dcc.Store` and supports automatic
 
 ## Tiny API V3 Reference
 
-API Base URL: https://api.tiny.com.br/public-api/v3
+API Base URL: https://api.tiny.com.br/api/v3
 
 ### Authentication Flow
 1. **Authorization**: GET https://accounts.tiny.com.br/realms/tiny/protocol/openid-connect/auth

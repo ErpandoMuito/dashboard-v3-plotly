@@ -400,12 +400,12 @@ class TinyOAuth:
         
         # TEST 4: Try different base URLs too!
         base_urls = [
-            "https://api.tiny.com.br/public-api/v3",
             "https://api.tiny.com.br/api/v3",
+            "https://api.tiny.com.br/public-api/v3",
             "https://api.tiny.com.br/v3",
             "https://api.tiny.com.br/openapi/v3",
-            "https://erp.tiny.com.br/public-api/v3",
             "https://erp.tiny.com.br/api/v3",
+            "https://erp.tiny.com.br/public-api/v3",
         ]
         
         # Test combinations (limited to avoid timeout)
