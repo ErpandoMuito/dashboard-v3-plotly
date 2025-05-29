@@ -184,21 +184,56 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
     ctx = callback_context
     
     if ctx.triggered[0]['prop_id'] == 'test-api-button.n_clicks':
-        # Call the API test endpoint
-        try:
-            # Use relative URL for Railway compatibility
-            import os
-            base_url = os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'localhost:8050')
-            if not base_url.startswith('http'):
-                base_url = f'https://{base_url}' if 'railway' in base_url else f'http://{base_url}'
-            
-            response = requests.get(f'{base_url}/api/test-tiny')
-            data = response.json()
-            results = '\n'.join(data.get('debug', ['No results']))
-        except Exception as e:
-            results = f"Error calling API: {str(e)}"
+        # Execute test directly instead of calling endpoint
+        results = []
         
-        return True, results
+        # Test 1: Token exists
+        token = tiny_oauth.get_access_token()
+        results.append(f"Token exists: {bool(token)}")
+        results.append(f"Token preview: {token[:20]}..." if token else "No token")
+        
+        # Test 2: Simple GET request
+        try:
+            url = "https://api.tiny.com.br/api/v3/produtos/892471503"
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            }
+            
+            results.append(f"\nURL: {url}")
+            results.append(f"Headers: {headers}")
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            results.append(f"Status Code: {response.status_code}")
+            results.append(f"Response Headers: {dict(response.headers)}")
+            results.append(f"Response Text: {response.text[:500]}")
+            
+            if response.status_code == 401:
+                results.append("ERROR: Token inválido ou expirado")
+            elif response.status_code == 404:
+                results.append("ERROR: Endpoint não encontrado")
+                
+        except requests.exceptions.RequestException as e:
+            results.append(f"Request Exception: {str(e)}")
+        except Exception as e:
+            results.append(f"General Exception: {str(e)}")
+        
+        # Test 3: Alternative endpoint
+        try:
+            url2 = "https://api.tiny.com.br/api/v3/produtos"
+            params = {"codigo": "PH-504", "pagina": 1}
+            results.append(f"\nAlternative URL: {url2}")
+            results.append(f"Params: {params}")
+            
+            response2 = requests.get(url2, params=params, headers=headers, timeout=10)
+            results.append(f"Alt Status: {response2.status_code}")
+            results.append(f"Alt Response: {response2.text[:200]}")
+        except Exception as e:
+            results.append(f"Alt Exception: {str(e)}")
+        
+        return True, '\n'.join(results)
     
     # Close button clicked
     return False, ""
