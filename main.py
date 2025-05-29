@@ -192,18 +192,52 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
         results.append(f"Token exists: {bool(token)}")
         results.append(f"Token preview: {token[:20]}..." if token else "No token")
         
+        # Decode JWT to check expiration
+        try:
+            import base64
+            import json as json_lib
+            # JWT has 3 parts separated by dots
+            parts = token.split('.') if token else []
+            if len(parts) >= 2:
+                # Decode the payload (second part)
+                payload = parts[1]
+                # Add padding if needed
+                payload += '=' * (4 - len(payload) % 4)
+                decoded = base64.b64decode(payload)
+                token_data = json_lib.loads(decoded)
+                
+                # Check expiration
+                exp = token_data.get('exp', 0)
+                iat = token_data.get('iat', 0)
+                import time
+                current_time = time.time()
+                
+                results.append(f"Token issued at: {datetime.datetime.fromtimestamp(iat)}")
+                results.append(f"Token expires at: {datetime.datetime.fromtimestamp(exp)}")
+                results.append(f"Token valid: {current_time < exp}")
+                results.append(f"Client ID in token: {token_data.get('azp', 'Not found')}")
+        except Exception as e:
+            results.append(f"Error decoding token: {str(e)}")
+        
         # Test 2: Simple GET request
         try:
             url = "https://api.tiny.com.br/api/v3/produtos/892471503"
             headers = {
                 "Authorization": f"Bearer {token}",
-                "Accept": "application/json",
-                "Content-Type": "application/json"
+                "Accept": "application/json"
             }
             
             results.append(f"\nURL: {url}")
             results.append(f"Headers: {headers}")
             
+            # First test with a simpler endpoint
+            results.append("\n=== Testing account info endpoint ===")
+            info_url = "https://api.tiny.com.br/api/v3/empresas"
+            info_response = requests.get(info_url, headers=headers, timeout=10)
+            results.append(f"Account Info Status: {info_response.status_code}")
+            results.append(f"Account Info Response: {info_response.text[:200]}")
+            
+            results.append("\n=== Testing product endpoint ===")
             response = requests.get(url, headers=headers, timeout=10)
             
             results.append(f"Status Code: {response.status_code}")
