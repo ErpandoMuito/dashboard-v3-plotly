@@ -132,6 +132,12 @@ class TinyOAuth:
         """
         Fetch product from Tiny API V3
         First tries local DB, then searches Tiny API by ID, code, or name
+        
+        API Documentation: https://erp.tiny.com.br/public-api/v3/swagger/
+        
+        Examples:
+        - By ID: GET /api/v3/produtos/892471503
+        - By code: GET /api/v3/produtos?codigo=PH-504&pagina=1&numeroRegistros=20
         """
         # Import local to avoid circular import
         from app.products_db import get_product_by_code, get_product_by_id
@@ -155,7 +161,7 @@ class TinyOAuth:
             
         headers = {
             'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json'
+            'Accept': 'application/json'
         }
         
         # Method 1: Try direct ID search if we have an ID
@@ -164,11 +170,12 @@ class TinyOAuth:
             print(f"[DEBUG] Trying direct ID search: {url}")
             
             try:
+                print(f"[DEBUG] Request URL: {url}")
+                print(f"[DEBUG] Request Headers: {headers}")
                 response = requests.get(url, headers=headers)
-                print(f"[DEBUG] URL: {response.url}")
-                print(f"[DEBUG] Status: {response.status_code}")
-                print(f"[DEBUG] Headers sent: {headers}")
-                print(f"[DEBUG] Response: {response.text}")
+                print(f"[DEBUG] Response Status: {response.status_code}")
+                print(f"[DEBUG] Response Headers: {dict(response.headers)}")
+                print(f"[DEBUG] Response Body: {response.text}")
                 
                 if response.status_code == 200:
                     data = response.json()
@@ -191,17 +198,20 @@ class TinyOAuth:
         url = f"{self.api_base_url}/produtos"
         params = {
             'pagina': 1,
-            'numeroRegistros': 50,
+            'numeroRegistros': 20,
             'codigo': search_term
         }
         
-        print(f"[DEBUG] Trying code search: {url} with params: {params}")
+        print(f"[DEBUG] Trying code search: {url}")
+        print(f"[DEBUG] Request Params: {params}")
         
         try:
+            print(f"[DEBUG] Request Headers: {headers}")
             response = requests.get(url, headers=headers, params=params)
-            print(f"[DEBUG] URL: {response.url}")
-            print(f"[DEBUG] Status: {response.status_code}")
-            print(f"[DEBUG] Response: {response.text}")
+            print(f"[DEBUG] Full URL: {response.url}")
+            print(f"[DEBUG] Response Status: {response.status_code}")
+            print(f"[DEBUG] Response Headers: {dict(response.headers)}")
+            print(f"[DEBUG] Response Body: {response.text}")
             
             if response.status_code == 200:
                 return response.json()
@@ -211,17 +221,20 @@ class TinyOAuth:
         # Method 3: Try search by name
         params = {
             'pagina': 1,
-            'numeroRegistros': 50,
+            'numeroRegistros': 20,
             'nome': search_term
         }
         
-        print(f"[DEBUG] Trying name search: {url} with params: {params}")
+        print(f"[DEBUG] Trying name search: {url}")
+        print(f"[DEBUG] Request Params: {params}")
         
         try:
+            print(f"[DEBUG] Request Headers: {headers}")
             response = requests.get(url, headers=headers, params=params)
-            print(f"[DEBUG] URL: {response.url}")
-            print(f"[DEBUG] Status: {response.status_code}")
-            print(f"[DEBUG] Response: {response.text}")
+            print(f"[DEBUG] Full URL: {response.url}")
+            print(f"[DEBUG] Response Status: {response.status_code}")
+            print(f"[DEBUG] Response Headers: {dict(response.headers)}")
+            print(f"[DEBUG] Response Body: {response.text}")
             
             if response.status_code == 200:
                 return response.json()

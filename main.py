@@ -113,6 +113,7 @@ def update_tiny_status(connected):
     if connected:
         # Try to fetch product PH-504 from Tiny
         debug_msg += "\n=== Fetching from Tiny API ===\n"
+        debug_msg += "Testing with ID 892471503 (PH-504)\n"
         product_data = tiny_oauth.fetch_product('PH-504')
         
         status = dbc.Alert("Conectado ao Tiny com sucesso!", color="success")
