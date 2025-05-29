@@ -23,10 +23,12 @@ app.layout = html.Div([
 ])
 
 @app.callback([Output('page-content', 'children'),
-               Output('tiny-connected', 'data')],
+               Output('tiny-connected', 'data'),
+               Output('url', 'search', allow_duplicate=True)],
               [Input('url', 'pathname'),
                Input('url', 'search')],
-              State('user-authenticated', 'data'))
+              State('user-authenticated', 'data'),
+              prevent_initial_call=True)
 def display_page(pathname, search, authenticated):
     print(f"[DEBUG] display_page - pathname: {pathname}, search: {search}, authenticated: {authenticated}")
     
@@ -34,18 +36,35 @@ def display_page(pathname, search, authenticated):
     if search and authenticated:
         parsed = parse_qs(search[1:])  # Remove '?' from search
         print(f"[DEBUG] Parsed query params: {parsed}")
+        
+        # Check for OAuth error
+        if 'error' in parsed:
+            error = parsed.get('error', ['unknown'])[0]
+            error_desc = parsed.get('error_description', ['No description'])[0]
+            print(f"[DEBUG] OAuth error: {error} - {error_desc}")
+            # Clear the URL parameters
+            return create_dashboard_layout(), False, ""
+            
         if 'code' in parsed:
             code = parsed['code'][0]
+            state = parsed.get('state', [None])[0]
             print(f"[DEBUG] OAuth code received: {code}")
+            print(f"[DEBUG] OAuth state: {state}")
+            
             # Exchange code for token
             token_data = tiny_oauth.exchange_code_for_token(code)
             print(f"[DEBUG] Token exchange result: {token_data is not None}")
+            
+            # Clear the URL parameters after processing
             if token_data:
-                return create_dashboard_layout(), True
+                return create_dashboard_layout(), True, ""
+            else:
+                # Token exchange failed, but still clear URL
+                return create_dashboard_layout(), False, ""
     
     if authenticated:
-        return create_dashboard_layout(), dash.no_update
-    return create_login_layout(), dash.no_update
+        return create_dashboard_layout(), dash.no_update, dash.no_update
+    return create_login_layout(), dash.no_update, dash.no_update
 
 @app.callback([Output('user-authenticated', 'data'),
                Output('url', 'pathname'),

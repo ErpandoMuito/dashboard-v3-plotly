@@ -47,28 +47,52 @@ class TinyOAuth:
         """Exchange authorization code for access token"""
         token_url = f"{self.auth_base_url}/token"
         
+        # The redirect_uri must match exactly what was used in the authorization request
+        # If Tiny redirected to /dashboard, we might need to use that
+        redirect_uri = self.redirect_uri
+        
         data = {
             'grant_type': 'authorization_code',
             'code': code,
-            'redirect_uri': self.redirect_uri,
+            'redirect_uri': redirect_uri,
             'client_id': self.client_id,
             'client_secret': self.client_secret
         }
         
         print(f"[DEBUG] Token exchange URL: {token_url}")
+        print(f"[DEBUG] Token exchange redirect_uri: {redirect_uri}")
         print(f"[DEBUG] Token exchange data: {data}")
         
         try:
-            response = requests.post(token_url, data=data)
+            # Add headers that might be required
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            }
+            
+            response = requests.post(token_url, data=data, headers=headers)
             print(f"[DEBUG] Token response status: {response.status_code}")
+            print(f"[DEBUG] Token response headers: {dict(response.headers)}")
             print(f"[DEBUG] Token response: {response.text}")
             
             if response.status_code == 200:
                 token_data = response.json()
                 self._store_tokens(token_data)
                 return token_data
+            else:
+                # Parse error response
+                try:
+                    error_data = response.json()
+                    print(f"[DEBUG] Token error response: {error_data}")
+                    error_msg = error_data.get('error_description', error_data.get('error', 'Unknown error'))
+                    print(f"[DEBUG] Token exchange failed: {error_msg}")
+                except:
+                    print(f"[DEBUG] Token exchange failed with status {response.status_code}: {response.text}")
+                    
         except Exception as e:
             print(f"[DEBUG] Token exchange error: {str(e)}")
+            import traceback
+            print(f"[DEBUG] Traceback: {traceback.format_exc()}")
         
         return None
     
