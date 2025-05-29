@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important Rules
+
+1. **Never invent information**: Never create emails, team names, companies or personal data. Always use generic placeholders like 'your-email@example.com' or 'Your Name' when necessary. Ask first if specific information is needed.
+
+2. **Only implement what's requested**: Don't create code, artifacts, files or features that weren't explicitly requested. Implement only what was asked and strictly necessary to function.
+
+3. **Prefer concise code**: Write minimal, concise code. Whenever possible, write fewer lines while maintaining clarity and functionality. Smaller, more precise and useful code is better than verbose code.
+
+4. **Git branch discipline**: Always check the project's branch structure. If a develop branch exists, use it for development. NEVER do 'git push' to main or prod without explicit authorization. Always ask 'Can I push to [branch]?' before pushing to main branches.
+
 ## Commands
 
 **Setup environment with UV (recommended - 100x faster than pip):**
