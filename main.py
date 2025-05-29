@@ -384,7 +384,19 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
         except Exception as e:
             results.append(f"Proxy note error: {str(e)}")
         
-        # Test 5: Check if the issue is with the specific endpoint
+        # Test 5: Check OpenID configuration
+        results.append("\n=== OpenID Configuration ===")
+        try:
+            oidc_config = tiny_oauth.get_openid_configuration()
+            if oidc_config:
+                results.append(f"Scopes supported: {oidc_config.get('scopes_supported', 'Not listed')}")
+                results.append(f"Token endpoint: {oidc_config.get('token_endpoint', 'Not found')}")
+            else:
+                results.append("Could not retrieve OpenID configuration")
+        except Exception as e:
+            results.append(f"OIDC config error: {str(e)}")
+        
+        # Test 6: Check if the issue is with the specific endpoint
         results.append("\n=== Testing different API patterns ===")
         
         # Test with company-specific endpoint pattern

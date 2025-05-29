@@ -60,13 +60,19 @@ class TinyOAuth:
     
     def get_auth_url(self):
         """Generate OAuth authorization URL"""
+        # Extended scopes for API V3 access
+        # Including all possible scopes that might be needed
+        scope = 'openid profile email offline_access api produtos empresas estoque contas-pagar contas-receber'
+        
         params = {
             'client_id': self.client_id,
             'redirect_uri': self.redirect_uri,
-            'scope': 'openid',
+            'scope': scope,
             'response_type': 'code',
             'prompt': 'login'  # Force re-authentication
         }
+        
+        print(f"[DEBUG] OAuth scopes requested: {scope}")
         return f"{self.auth_base_url}/auth?{urlencode(params)}"
     
     def exchange_code_for_token(self, code):
@@ -261,6 +267,21 @@ class TinyOAuth:
                     print(f"[DEBUG] File retrieval error: {str(e)}")
             else:
                 print(f"[DEBUG] Token file does not exist: {self.token_file}")
+        return None
+    
+    def get_openid_configuration(self):
+        """Get OpenID configuration to check available scopes"""
+        config_url = f"{self.auth_base_url}/.well-known/openid-configuration"
+        try:
+            response = requests.get(config_url, timeout=5)
+            if response.status_code == 200:
+                config = response.json()
+                print("[DEBUG] OpenID Configuration retrieved")
+                if 'scopes_supported' in config:
+                    print(f"[DEBUG] Supported scopes: {config['scopes_supported']}")
+                return config
+        except Exception as e:
+            print(f"[DEBUG] Error getting OpenID config: {str(e)}")
         return None
     
     def logout(self):
