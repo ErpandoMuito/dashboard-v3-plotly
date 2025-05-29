@@ -93,6 +93,15 @@ def create_dashboard_layout():
                         html.Div(id="product-info", children="")
                     ])
                 ], className="mt-4")
-            ], width=12)
+            ], width=12, md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H4("Debug Console", className="card-title"),
+                        html.Div(id="debug-output", style={'whiteSpace': 'pre-line', 'fontSize': '12px', 'fontFamily': 'monospace'})
+                    ])
+                ], className="mt-4")
+            ], width=12, md=6)
         ])
     ], fluid=True)

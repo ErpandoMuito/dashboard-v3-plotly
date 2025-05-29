@@ -45,11 +45,21 @@ class TinyOAuth:
             'client_secret': self.client_secret
         }
         
-        response = requests.post(token_url, data=data)
-        if response.status_code == 200:
-            token_data = response.json()
-            self._store_tokens(token_data)
-            return token_data
+        print(f"[DEBUG] Token exchange URL: {token_url}")
+        print(f"[DEBUG] Token exchange data: {data}")
+        
+        try:
+            response = requests.post(token_url, data=data)
+            print(f"[DEBUG] Token response status: {response.status_code}")
+            print(f"[DEBUG] Token response: {response.text}")
+            
+            if response.status_code == 200:
+                token_data = response.json()
+                self._store_tokens(token_data)
+                return token_data
+        except Exception as e:
+            print(f"[DEBUG] Token exchange error: {str(e)}")
+        
         return None
     
     def get_access_token(self):
