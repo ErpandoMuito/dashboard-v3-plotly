@@ -21,6 +21,7 @@ def create_dashboard_layout():
             color="primary",
             dark=True,
             children=[
+                dbc.NavItem(dbc.Button("Test API", id="test-api-button", color="info", size="sm", className="me-2")),
                 dbc.NavItem(dbc.Button("Conectar ao Tiny", id="tiny-connect-button", color="success", size="sm", className="me-2")),
                 dbc.NavItem(dbc.Button("Sair", id="logout-button", color="danger", size="sm"))
             ]
@@ -107,4 +108,19 @@ def create_dashboard_layout():
                 ], className="mt-4")
             ], width=12, md=6)
         ])
+        ]),
+        
+        # Modal for API test results
+        dbc.Modal([
+            dbc.ModalHeader("API Test Results"),
+            dbc.ModalBody([
+                html.Pre(id="api-test-results", style={'whiteSpace': 'pre-wrap', 'fontSize': '12px'})
+            ]),
+            dbc.ModalFooter(
+                dbc.Button("Close", id="close-test-modal", className="ms-auto", n_clicks=0)
+            ),
+        ], id="test-modal", size="lg", is_open=False),
+        
+        # Store for API test
+        dcc.Store(id='api-test-trigger')
     ], fluid=True)
