@@ -21,6 +21,7 @@ def create_dashboard_layout():
             color="primary",
             dark=True,
             children=[
+                dbc.NavItem(dbc.Button("Conectar ao Tiny", id="tiny-connect-button", color="success", size="sm", className="me-2")),
                 dbc.NavItem(dbc.Button("Sair", id="logout-button", color="danger", size="sm"))
             ]
         ),
@@ -79,5 +80,19 @@ def create_dashboard_layout():
                     ])
                 ])
             ], width=12, md=6),
-        ], className="mt-4")
+        ], className="mt-4"),
+        
+        # Area for Tiny connection status and product info
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H4("Status Conexão Tiny", className="card-title"),
+                        html.Div(id="tiny-status", children="Não conectado"),
+                        html.Hr(),
+                        html.Div(id="product-info", children="")
+                    ])
+                ], className="mt-4")
+            ], width=12)
+        ])
     ], fluid=True)
