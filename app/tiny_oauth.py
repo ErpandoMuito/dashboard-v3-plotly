@@ -142,7 +142,9 @@ class TinyOAuth:
         
         headers = {
             'Authorization': f'Bearer {token}',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (DashboardV3)'
         }
         
         # Try info-conta endpoint from documentation
@@ -150,7 +152,12 @@ class TinyOAuth:
         
         try:
             print(f"[DEBUG] Getting account info from: {info_url}")
-            response = requests.get(info_url, headers=headers, timeout=5)
+            # Check for session cookie
+            cookies = {}
+            if hasattr(self, 'session_cookie') and self.session_cookie:
+                cookies['TINYSESSID'] = self.session_cookie
+            
+            response = requests.get(info_url, headers=headers, cookies=cookies if cookies else None, timeout=5)
             print(f"[DEBUG] Account info response: {response.status_code}")
             
             if response.status_code == 200:
@@ -366,15 +373,15 @@ class TinyOAuth:
         
         # TEST 2: Try EVERY possible header combination
         base_headers = [
-            {"Authorization": f"Bearer {token}"},
-            {"Authorization": f"Bearer {token}", "Accept": "application/json"},
+            {"Authorization": f"Bearer {token}", "Accept": "application/json", "Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+            {"Authorization": f"Bearer {token}", "Accept": "application/json", "User-Agent": "Mozilla/5.0"},
             {"Authorization": f"Bearer {token}", "Accept": "application/json", "Content-Type": "application/json"},
-            {"Authorization": f"Bearer {token}", "Accept": "*/*"},
-            {"Authorization": token},  # Without Bearer
-            {"Authorization": f"Bearer {token}", "X-Empresa": "phoenixfundicao"},
-            {"Authorization": f"Bearer {token}", "X-Company": "phoenixfundicao"},
-            {"Authorization": f"Bearer {token}", "X-Empresa-Id": "phoenixfundicao"},
-            {"Authorization": f"Bearer {token}", "X-Tenant": "phoenixfundicao"},
+            {"Authorization": f"Bearer {token}"},
+            {"Authorization": f"Bearer {token}", "Accept": "*/*", "User-Agent": "Mozilla/5.0"},
+            {"Authorization": f"Bearer {token}", "Accept": "application/json", "User-Agent": "DashboardV3/1.0"},
+            {"Authorization": f"Bearer {token}", "X-Empresa": "phoenixfundicao", "Accept": "application/json"},
+            {"Authorization": f"Bearer {token}", "X-Company": "phoenixfundicao", "Accept": "application/json"},
+            {"Authorization": f"Bearer {token}", "X-Tenant": "phoenixfundicao", "Accept": "application/json"},
         ]
         
         # TEST 3: Try MANY different endpoints (including empresa-specific)
@@ -400,12 +407,12 @@ class TinyOAuth:
         
         # TEST 4: Try different base URLs too!
         base_urls = [
-            "https://api.tiny.com.br/api/v3",
             "https://api.tiny.com.br/public-api/v3",
+            "https://api.tiny.com.br/api/v3",
             "https://api.tiny.com.br/v3",
             "https://api.tiny.com.br/openapi/v3",
-            "https://erp.tiny.com.br/api/v3",
             "https://erp.tiny.com.br/public-api/v3",
+            "https://erp.tiny.com.br/api/v3",
         ]
         
         # Test combinations (limited to avoid timeout)
@@ -421,9 +428,15 @@ class TinyOAuth:
                     }
                     
                     try:
+                        # Check if we need cookies
+                        cookies = {}
+                        if hasattr(self, 'session_cookie') and self.session_cookie:
+                            cookies['TINYSESSID'] = self.session_cookie
+                        
                         response = requests.get(
                             f"{base_url}{endpoint}", 
                             headers=headers, 
+                            cookies=cookies if cookies else None,
                             timeout=2,
                             allow_redirects=False
                         )
@@ -526,7 +539,8 @@ class TinyOAuth:
         headers = {
             'Authorization': f'Bearer {token}',
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (DashboardV3)'
         }
         
         # Method 1: Try direct ID search if we have an ID
