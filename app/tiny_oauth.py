@@ -318,16 +318,51 @@ class TinyOAuth:
                 except Exception as e:
                     print(f"[DEBUG] File removal error: {str(e)}")
     
+    def test_api_connection(self):
+        """Test API connection with detailed debugging"""
+        token = self.get_access_token()
+        if not token:
+            return {"error": "No token available"}
+        
+        results = {}
+        
+        # Test 1: Simple GET with minimal headers
+        headers_minimal = {
+            'Authorization': f'Bearer {token}'
+        }
+        
+        # Test 2: Full headers
+        headers_full = {
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        
+        test_url = f"{self.api_base_url}/produtos?limit=1"
+        
+        for header_type, headers in [("minimal", headers_minimal), ("full", headers_full)]:
+            try:
+                response = requests.get(test_url, headers=headers, timeout=5)
+                results[header_type] = {
+                    "status": response.status_code,
+                    "headers": dict(response.headers),
+                    "body": response.text[:500]
+                }
+            except Exception as e:
+                results[header_type] = {"error": str(e)}
+        
+        return results
+    
     def fetch_product(self, search_term):
         """
         Fetch product from Tiny API V3
         First tries local DB, then searches Tiny API by ID, code, or name
         
-        API Documentation: https://erp.tiny.com.br/public-api/v3/swagger/
+        API Documentation: https://api.tiny.com.br/public-api/v3
         
         Examples:
-        - By ID: GET /api/v3/produtos/892471503
-        - By code: GET /api/v3/produtos?codigo=PH-504&pagina=1&numeroRegistros=20
+        - By ID: GET /produtos/{id}
+        - By code: GET /produtos?codigo=PH-504&limit=20
         """
         # Import local to avoid circular import
         from app.products_db import get_product_by_code, get_product_by_id

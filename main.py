@@ -384,7 +384,15 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
         except Exception as e:
             results.append(f"Proxy note error: {str(e)}")
         
-        # Test 5: Check account info
+        # Test 5: Test API connection with different headers
+        results.append("\n=== API Connection Test ===")
+        try:
+            connection_test = tiny_oauth.test_api_connection()
+            results.append(f"Connection test results: {json.dumps(connection_test, indent=2)}")
+        except Exception as e:
+            results.append(f"Connection test error: {str(e)}")
+        
+        # Test 6: Check account info
         results.append("\n=== Account Information ===")
         try:
             account_info = tiny_oauth.get_account_info()
@@ -423,9 +431,16 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
                 results.append(f"\nTrying: {pattern}")
                 test_response = requests.get(pattern, headers=headers, timeout=3)
                 results.append(f"Status: {test_response.status_code}")
-                if test_response.status_code != 403:
-                    results.append(f"Different! Headers: {dict(test_response.headers)}")
-                    results.append(f"Body preview: {test_response.text[:100]}")
+                if test_response.status_code == 401:
+                    results.append("401 Unauthorized - checking response details...")
+                    try:
+                        error_data = test_response.json()
+                        results.append(f"Error response: {json.dumps(error_data, indent=2)}")
+                    except:
+                        results.append(f"Error text: {test_response.text[:200]}")
+                elif test_response.status_code != 403:
+                    results.append(f"Headers: {dict(test_response.headers)}")
+                    results.append(f"Body: {test_response.text[:200]}")
             except Exception as e:
                 results.append(f"Error: {str(e)}")
         
