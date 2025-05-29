@@ -82,46 +82,48 @@ The app uses session-based authentication via `dcc.Store` and supports automatic
 
 ## Tiny API V3 Reference
 
-API Documentation: https://erp.tiny.com.br/public-api/v3/swagger/
+API Base URL: https://api.tiny.com.br/public-api/v3
+
+### Authentication Flow
+1. **Authorization**: GET https://accounts.tiny.com.br/realms/tiny/protocol/openid-connect/auth
+   - Parameters: client_id, redirect_uri, scope=openid, response_type=code
+2. **Token Exchange**: POST https://accounts.tiny.com.br/realms/tiny/protocol/openid-connect/token
+   - Grant type: authorization_code
+   - Returns: access_token (4h), refresh_token (24h)
+3. **Token Refresh**: Same endpoint with grant_type=refresh_token
 
 ### Key Endpoints
 
 **1. Produtos (Products)**
-- GET /api/v3/produtos - List products
-  - Query params: pagina, numeroRegistros, codigo, nome
-- GET /api/v3/produtos/{id} - Get product by ID
-- POST /api/v3/produtos - Create product
-- PUT /api/v3/produtos/{id} - Update product
+- GET /produtos - List products
+  - Query params: nome, codigo, gtin, situacao, limit, offset
+- GET /produtos/{idProduto} - Get product by ID
+- POST /produtos - Create product
+- PUT /produtos/{idProduto}/preco - Update price
 
 **2. Estoque (Stock/Inventory)**
-- GET /api/v3/estoque/{idProduto} - Get product stock
-- POST /api/v3/estoque/{idProduto} - Update product stock
+- GET /estoque/{idProduto} - Get product stock
+- POST /estoque/{idProduto} - Update stock (types: B=Balance, E=Entry, S=Exit)
 
-**3. Contas a Pagar (Accounts Payable)**
-- GET /api/v3/contas-pagar - List payables
-  - Query params: nomeCliente, situacao, dataInicialEmissao, dataFinalEmissao
-  - Situacao values: aberto, cancelada, pago, parcialmente_pago
-- POST /api/v3/contas-pagar - Create payable
-- GET /api/v3/contas-pagar/{id} - Get specific payable
+**3. Notas Fiscais (Invoices)**
+- GET /notas - List invoices
+- GET /notas/{idNota} - Get invoice details
+- GET /notas/{idNota}/xml - Get XML
+- POST /notas/{idNota}/emitir - Issue invoice
+- POST /notas/xml - Import XML (multipart/form-data)
 
-**4. Contas a Receber (Accounts Receivable)**
-- GET /api/v3/contas-receber - List receivables
-  - Similar query params to contas-pagar
-- POST /api/v3/contas-receber - Create receivable
-- PUT /api/v3/contas-receber/{id} - Update receivable
-- POST /api/v3/contas-receber/{id}/baixar - Process payment
+**4. Pedidos (Orders)**
+- POST /pedidos - Create order
+- POST /pedidos/{idPedido}/gerar-nota-fiscal - Generate invoice from order
 
 ### Authentication Headers
 All requests require:
 - Authorization: Bearer {access_token}
 - Accept: application/json
 
-### Common Response Structure
-```json
-{
-  "data": [...],
-  "pagina": 1,
-  "totalPaginas": 10,
-  "registros": 100
-}
-```
+### Important Notes
+- IDs are always integers
+- Dates format: YYYY-MM-DD
+- Monetary values are floats
+- Default pagination: 100 items
+- SKU must be unique

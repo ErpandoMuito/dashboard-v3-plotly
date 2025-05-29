@@ -38,7 +38,8 @@ class TinyOAuth:
         ]
         
         self.auth_base_url = "https://accounts.tiny.com.br/realms/tiny/protocol/openid-connect"
-        self.api_base_url = "https://api.tiny.com.br/api/v3"
+        # According to the API documentation, the correct base URL is:
+        self.api_base_url = "https://api.tiny.com.br/public-api/v3"
         
         # Try Redis, fallback to file storage
         try:
@@ -60,9 +61,8 @@ class TinyOAuth:
     
     def get_auth_url(self):
         """Generate OAuth authorization URL"""
-        # Use only the scopes that we know work
-        # We'll start with the basic ones and can add more if needed
-        scope = 'openid profile email offline_access'
+        # According to the API documentation, only 'openid' scope is valid
+        scope = 'openid'
         
         params = {
             'client_id': self.client_id,

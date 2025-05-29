@@ -267,7 +267,7 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
             
             # Test 1: Check if API is reachable without auth
             results.append("\n=== Testing API availability (no auth) ===")
-            base_url = "https://api.tiny.com.br/api/v3"
+            base_url = "https://api.tiny.com.br/public-api/v3"
             try:
                 # Try with User-Agent header
                 base_headers = {
@@ -293,7 +293,7 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
             }
             
             # Test empresas endpoint with full headers
-            empresas_url = "https://api.tiny.com.br/api/v3/empresas"
+            empresas_url = "https://api.tiny.com.br/public-api/v3/empresas"
             empresas_response = requests.get(empresas_url, headers=full_headers, timeout=10)
             results.append(f"Empresas Status: {empresas_response.status_code}")
             if empresas_response.status_code != 200:
@@ -312,7 +312,7 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
             })
             
             # First request to get cookies
-            product_url = "https://api.tiny.com.br/api/v3/produtos/892471503"
+            product_url = "https://api.tiny.com.br/public-api/v3/produtos/892471503"
             session_response = session.get(product_url, timeout=10)
             results.append(f"Session Status: {session_response.status_code}")
             results.append(f"Cookies: {session.cookies.get_dict()}")
@@ -359,9 +359,9 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
         
         # Try erp.tiny.com.br instead of api.tiny.com.br
         alt_urls = [
-            "https://erp.tiny.com.br/api/v3/produtos/892471503",
-            "https://api.tiny.com.br/openapi/v3/produtos/892471503",
-            "https://tiny.com.br/api/v3/produtos/892471503"
+            "https://api.tiny.com.br/api/v3/produtos/892471503",
+            "https://erp.tiny.com.br/public-api/v3/produtos/892471503",
+            "https://tiny.com.br/public-api/v3/produtos/892471503"
         ]
         
         for alt_url in alt_urls:
@@ -401,10 +401,10 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
         
         # Test with company-specific endpoint pattern
         test_patterns = [
-            "https://api.tiny.com.br/api/v3/info",
-            "https://api.tiny.com.br/api/info",
-            f"https://api.tiny.com.br/api/v3/produtos?token={token[:20]}...",  # Some APIs want token in query
-            "https://erp.tiny.com.br/openapi/v3/auth/verify"
+            "https://api.tiny.com.br/public-api/v3/info",
+            "https://api.tiny.com.br/public-api/v3/produtos?limit=1",
+            "https://api.tiny.com.br/public-api/v3/empresas",
+            "https://api.tiny.com.br/public-api/v3/estoque/892471503"
         ]
         
         for pattern in test_patterns:
@@ -469,7 +469,7 @@ def proxy_api_request(path):
     }
     
     # Forward the request to Tiny API
-    api_url = f"https://api.tiny.com.br/api/v3/{path}"
+    api_url = f"https://api.tiny.com.br/public-api/v3/{path}"
     
     try:
         if request.method == 'GET':
