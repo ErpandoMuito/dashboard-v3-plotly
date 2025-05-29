@@ -384,7 +384,18 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
         except Exception as e:
             results.append(f"Proxy note error: {str(e)}")
         
-        # Test 5: Check OpenID configuration
+        # Test 5: Check account info
+        results.append("\n=== Account Information ===")
+        try:
+            account_info = tiny_oauth.get_account_info()
+            if account_info:
+                results.append(f"Account info retrieved: {json.dumps(account_info, indent=2)[:200]}...")
+            else:
+                results.append("Could not retrieve account information")
+        except Exception as e:
+            results.append(f"Account info error: {str(e)}")
+        
+        # Test 6: Check OpenID configuration
         results.append("\n=== OpenID Configuration ===")
         try:
             oidc_config = tiny_oauth.get_openid_configuration()
@@ -396,15 +407,15 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
         except Exception as e:
             results.append(f"OIDC config error: {str(e)}")
         
-        # Test 6: Check if the issue is with the specific endpoint
+        # Test 7: Check if the issue is with the specific endpoint
         results.append("\n=== Testing different API patterns ===")
         
-        # Test with company-specific endpoint pattern
+        # Test with simpler endpoints that should work
         test_patterns = [
-            "https://api.tiny.com.br/public-api/v3/info",
-            "https://api.tiny.com.br/public-api/v3/produtos?limit=1",
-            "https://api.tiny.com.br/public-api/v3/empresas",
-            "https://api.tiny.com.br/public-api/v3/estoque/892471503"
+            "https://api.tiny.com.br/public-api/v3/info-conta",
+            "https://api.tiny.com.br/public-api/v3/categorias/todas",
+            "https://api.tiny.com.br/public-api/v3/formas-pagamento",
+            "https://api.tiny.com.br/public-api/v3/produtos?limit=1"
         ]
         
         for pattern in test_patterns:

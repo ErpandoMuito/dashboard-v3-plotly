@@ -141,6 +141,34 @@ class TinyOAuth:
         
         return tokens.get('access_token')
     
+    def get_account_info(self):
+        """Get account information to determine available endpoints"""
+        token = self.get_access_token()
+        if not token:
+            return None
+        
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/json'
+        }
+        
+        # Try info-conta endpoint from documentation
+        info_url = f"{self.api_base_url}/info-conta"
+        
+        try:
+            print(f"[DEBUG] Getting account info from: {info_url}")
+            response = requests.get(info_url, headers=headers, timeout=5)
+            print(f"[DEBUG] Account info response: {response.status_code}")
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"[DEBUG] Account info error: {response.text[:200]}")
+        except Exception as e:
+            print(f"[DEBUG] Error getting account info: {str(e)}")
+        
+        return None
+    
     def validate_token(self):
         """Test if the current token is valid by making a simple API call"""
         token = self.get_access_token()
@@ -149,45 +177,33 @@ class TinyOAuth:
         
         headers = {
             'Authorization': f'Bearer {token}',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Accept': 'application/json'
         }
         
-        # Try a simple endpoint to validate the token
-        # First try the produtos endpoint which is more commonly available
-        test_urls = [
-            f"{self.api_base_url}/produtos?pagina=1&numeroRegistros=1",
-            f"{self.api_base_url}/empresas",
-            "https://api.tiny.com.br/api/v3/info"  # Try info endpoint
-        ]
+        # According to documentation, try the produtos endpoint with proper parameters
+        test_url = f"{self.api_base_url}/produtos?limit=1&offset=0"
         
-        for test_url in test_urls:
-            try:
-                print(f"[DEBUG] Testing token with URL: {test_url}")
-                response = requests.get(test_url, headers=headers, timeout=5)
-                print(f"[DEBUG] Token test response: {response.status_code}")
-                
-                if response.status_code == 200:
-                    return True, "Token is valid"
-                elif response.status_code == 401:
-                    # Try to refresh token
-                    tokens = self._get_stored_tokens()
-                    if tokens and tokens.get('refresh_token'):
-                        new_token = self._refresh_token(tokens.get('refresh_token'))
-                        if new_token:
-                            return True, "Token refreshed successfully"
-                    return False, "Token is expired or invalid"
-                elif response.status_code == 403:
-                    print(f"[DEBUG] 403 Response body: {response.text[:200]}")
-                    continue  # Try next URL
-                elif response.status_code == 404:
-                    print(f"[DEBUG] 404 - Endpoint not found: {test_url}")
-                    continue  # Try next URL
-            except Exception as e:
-                print(f"[DEBUG] Error testing {test_url}: {str(e)}")
-                continue
-        
-        return False, "Access forbidden - may need to re-authenticate"
+        try:
+            print(f"[DEBUG] Testing token with URL: {test_url}")
+            response = requests.get(test_url, headers=headers, timeout=5)
+            print(f"[DEBUG] Token test response: {response.status_code}")
+            
+            if response.status_code == 200:
+                return True, "Token is valid"
+            elif response.status_code == 401:
+                print(f"[DEBUG] 401 Response: {response.text[:200]}")
+                # Check if we need empresa context
+                if 'empresa' in response.text.lower():
+                    return False, "Need to select empresa/company context"
+                return False, "Token is expired or invalid - need to re-authenticate"
+            elif response.status_code == 403:
+                return False, "Access forbidden - check permissions"
+            elif response.status_code == 404:
+                return False, "API endpoint not found"
+            else:
+                return False, f"Unexpected status: {response.status_code}"
+        except Exception as e:
+            return False, f"Error validating token: {str(e)}"
     
     def _refresh_token(self, refresh_token):
         """Refresh access token"""
@@ -333,10 +349,31 @@ class TinyOAuth:
             print("[DEBUG] No access token available")
             return None
             
+        # According to the API documentation, we need to get the empresa ID from the token
+        # The API requires the empresa ID in the URL pattern
+        import base64
+        import json as json_lib
+        
+        empresa_id = None
+        try:
+            # Decode JWT to get empresa ID
+            parts = token.split('.')
+            if len(parts) >= 2:
+                payload = parts[1]
+                # Add padding if needed
+                payload += '=' * (4 - len(payload) % 4)
+                decoded = base64.b64decode(payload)
+                token_data = json_lib.loads(decoded)
+                # Try to extract empresa ID from token claims
+                empresa_id = token_data.get('empresa_id') or token_data.get('emp_id') or token_data.get('company_id')
+                print(f"[DEBUG] Token claims: {list(token_data.keys())}")
+        except Exception as e:
+            print(f"[DEBUG] Error decoding token for empresa ID: {str(e)}")
+        
         headers = {
             'Authorization': f'Bearer {token}',
             'Accept': 'application/json',
-            'User-Agent': 'TinyERP-Dashboard/1.0'
+            'Content-Type': 'application/json'
         }
         
         # Method 1: Try direct ID search if we have an ID
