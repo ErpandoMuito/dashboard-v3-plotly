@@ -6,7 +6,7 @@ from app.dashboard import create_dashboard_layout
 from app.tiny_oauth import TinyOAuth
 from urllib.parse import parse_qs, urlparse
 import requests
-from flask import jsonify, send_file
+from flask import jsonify, send_file, request
 import json
 import io
 
@@ -74,6 +74,8 @@ def logout(n_clicks):
 def get_tiny_auth_url(n_clicks):
     print(f"[DEBUG] get_tiny_auth_url called with n_clicks: {n_clicks}")
     if n_clicks:
+        # Clear existing tokens to force re-authentication
+        tiny_oauth.logout()
         auth_url = tiny_oauth.get_auth_url()
         print(f"[DEBUG] Generated auth URL: {auth_url}")
         return auth_url
@@ -103,6 +105,13 @@ def update_tiny_status(connected):
     from app.products_db import get_product_by_code
     
     debug_msg = f"Connected status: {connected}\n"
+    
+    # Validate token if connected
+    if connected:
+        is_valid, validation_msg = tiny_oauth.validate_token()
+        debug_msg += f"Token validation: {validation_msg}\n"
+        if not is_valid:
+            return dbc.Alert(f"Erro de autenticação: {validation_msg}", color="danger"), "", debug_msg
     
     # First test local database
     debug_msg += "\n=== Testing Local Database ===\n"
@@ -179,18 +188,12 @@ def update_debug_live(n):
      Output('api-test-results', 'children'),
      Output('debug-download-data', 'data')],
     [Input('test-api-button', 'n_clicks'),
-     Input('close-test-modal', 'n_clicks'),
-     Input('download-debug-button', 'n_clicks')],
-    [State('test-modal', 'is_open'),
-     State('debug-download-data', 'data')],
+     Input('close-test-modal', 'n_clicks')],
+    State('test-modal', 'is_open'),
     prevent_initial_call=True
 )
-def toggle_test_modal(test_clicks, close_clicks, download_clicks, is_open, debug_data):
+def toggle_test_modal(test_clicks, close_clicks, is_open):
     ctx = callback_context
-    
-    if ctx.triggered[0]['prop_id'] == 'download-debug-button.n_clicks' and debug_data:
-        # Return the download data
-        return dash.no_update, dash.no_update, dcc.send_string(debug_data, "tiny_api_debug.json")
     
     if ctx.triggered[0]['prop_id'] == 'test-api-button.n_clicks':
         # Execute test directly instead of calling endpoint
@@ -258,8 +261,9 @@ def toggle_test_modal(test_clicks, close_clicks, download_clicks, is_open, debug
                 "Authorization": f"Bearer {token}",
                 "Accept": "application/json",
                 "Content-Type": "application/json",
-                "User-Agent": "TinyERP-Dashboard/1.0",
-                "X-Requested-With": "XMLHttpRequest"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Referer": "https://erp.tiny.com.br/",
+                "Origin": "https://erp.tiny.com.br"
             }
             
             # Test empresas endpoint with full headers
@@ -344,6 +348,16 @@ def toggle_test_modal(test_clicks, close_clicks, download_clicks, is_open, debug
             except Exception as e:
                 results.append(f"Error: {str(e)}")
         
+        # Test 4: Try using local proxy
+        results.append("\n=== Testing via local proxy ===")
+        try:
+            proxy_url = "/api/proxy/produtos/892471503"
+            results.append(f"Proxy URL: {proxy_url}")
+            # Note: This won't work in the callback context, but shows the concept
+            results.append("Note: Proxy endpoint available at /api/proxy/*")
+        except Exception as e:
+            results.append(f"Proxy note error: {str(e)}")
+        
         # Create debug data for download
         debug_info = {
             "timestamp": datetime.datetime.now().isoformat() if 'datetime' in globals() else "unknown",
@@ -368,58 +382,51 @@ def toggle_test_modal(test_clicks, close_clicks, download_clicks, is_open, debug
     # Close button clicked
     return False, "", dash.no_update
 
-# Flask route for API testing
-@server.route('/api/test-tiny')
-def test_tiny_api():
-    results = []
-    
-    # Test 1: Token exists
+# Callback for download button
+@app.callback(
+    Output('download-debug', 'data'),
+    Input('download-debug-button', 'n_clicks'),
+    State('debug-download-data', 'data'),
+    prevent_initial_call=True
+)
+def download_debug(n_clicks, debug_data):
+    if n_clicks and debug_data:
+        return dict(content=debug_data, filename="tiny_api_debug.json")
+    return dash.no_update
+
+# Server route for proxying API requests to avoid CORS issues
+@server.route('/api/proxy/<path:path>')
+def proxy_api_request(path):
+    """Proxy requests to Tiny API to avoid CORS issues"""
     token = tiny_oauth.get_access_token()
-    results.append(f"Token exists: {bool(token)}")
-    results.append(f"Token preview: {token[:20]}..." if token else "No token")
+    if not token:
+        return jsonify({"error": "No authentication token"}), 401
     
-    # Test 2: Simple GET request
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    
+    # Forward the request to Tiny API
+    api_url = f"https://api.tiny.com.br/api/v3/{path}"
+    
     try:
-        url = "https://api.tiny.com.br/api/v3/produtos/892471503"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        }
+        if request.method == 'GET':
+            response = requests.get(api_url, headers=headers, params=request.args)
+        else:
+            response = requests.request(
+                method=request.method,
+                url=api_url,
+                headers=headers,
+                json=request.get_json(),
+                params=request.args
+            )
         
-        results.append(f"\nURL: {url}")
-        results.append(f"Headers: {headers}")
-        
-        response = requests.get(url, headers=headers, timeout=10)
-        
-        results.append(f"Status Code: {response.status_code}")
-        results.append(f"Response Headers: {dict(response.headers)}")
-        results.append(f"Response Text: {response.text[:500]}")
-        
-        if response.status_code == 401:
-            results.append("ERROR: Token inválido ou expirado")
-        elif response.status_code == 404:
-            results.append("ERROR: Endpoint não encontrado")
-            
-    except requests.exceptions.RequestException as e:
-        results.append(f"Request Exception: {str(e)}")
+        # Return the response from Tiny API
+        return response.content, response.status_code, {'Content-Type': 'application/json'}
     except Exception as e:
-        results.append(f"General Exception: {str(e)}")
-    
-    # Test 3: Alternative endpoint
-    try:
-        url2 = "https://api.tiny.com.br/api/v3/produtos"
-        params = {"codigo": "PH-504", "pagina": 1}
-        results.append(f"\nAlternative URL: {url2}")
-        results.append(f"Params: {params}")
-        
-        response2 = requests.get(url2, params=params, headers=headers, timeout=10)
-        results.append(f"Alt Status: {response2.status_code}")
-        results.append(f"Alt Response: {response2.text[:200]}")
-    except Exception as e:
-        results.append(f"Alt Exception: {str(e)}")
-    
-    return jsonify({"debug": results})
+        return jsonify({"error": str(e)}), 500
 
 def run_server():
     """Entry point for running the server"""

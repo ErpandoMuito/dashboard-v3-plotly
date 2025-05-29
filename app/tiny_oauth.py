@@ -25,7 +25,11 @@ class TinyOAuth:
         except Exception as e:
             print(f"[DEBUG] Redis connection failed: {str(e)}")
             self.use_redis = False
-            self.token_file = '/tmp/tiny_tokens.json'
+            # Use a persistent directory instead of /tmp
+            import pathlib
+            token_dir = pathlib.Path.home() / '.tiny_oauth'
+            token_dir.mkdir(exist_ok=True)
+            self.token_file = str(token_dir / 'tokens.json')
             print(f"[DEBUG] Using file storage: {self.token_file}")
     
     def get_auth_url(self):
@@ -34,7 +38,8 @@ class TinyOAuth:
             'client_id': self.client_id,
             'redirect_uri': self.redirect_uri,
             'scope': 'openid',
-            'response_type': 'code'
+            'response_type': 'code',
+            'prompt': 'login'  # Force re-authentication
         }
         return f"{self.auth_base_url}/auth?{urlencode(params)}"
     
@@ -79,6 +84,34 @@ class TinyOAuth:
             return self._refresh_token(tokens.get('refresh_token'))
         
         return tokens.get('access_token')
+    
+    def validate_token(self):
+        """Test if the current token is valid by making a simple API call"""
+        token = self.get_access_token()
+        if not token:
+            return False, "No token available"
+        
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        
+        # Try a simple endpoint to validate the token
+        test_url = f"{self.api_base_url}/empresas"
+        
+        try:
+            response = requests.get(test_url, headers=headers, timeout=5)
+            if response.status_code == 200:
+                return True, "Token is valid"
+            elif response.status_code == 401:
+                return False, "Token is expired or invalid"
+            elif response.status_code == 403:
+                return False, "Access forbidden - may need to re-authenticate"
+            else:
+                return False, f"Unexpected status: {response.status_code}"
+        except Exception as e:
+            return False, f"Error validating token: {str(e)}"
     
     def _refresh_token(self, refresh_token):
         """Refresh access token"""
@@ -159,6 +192,24 @@ class TinyOAuth:
             else:
                 print(f"[DEBUG] Token file does not exist: {self.token_file}")
         return None
+    
+    def logout(self):
+        """Clear stored tokens to force re-authentication"""
+        print("[DEBUG] Clearing stored tokens")
+        
+        if self.use_redis:
+            try:
+                self.redis_client.delete('tiny_tokens')
+                print("[DEBUG] Tokens cleared from Redis")
+            except Exception as e:
+                print(f"[DEBUG] Redis clear error: {str(e)}")
+        else:
+            if os.path.exists(self.token_file):
+                try:
+                    os.remove(self.token_file)
+                    print(f"[DEBUG] Token file removed: {self.token_file}")
+                except Exception as e:
+                    print(f"[DEBUG] File removal error: {str(e)}")
     
     def fetch_product(self, search_term):
         """
