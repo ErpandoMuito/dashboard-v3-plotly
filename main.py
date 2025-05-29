@@ -6,7 +6,9 @@ from app.dashboard import create_dashboard_layout
 from app.tiny_oauth import TinyOAuth
 from urllib.parse import parse_qs, urlparse
 import requests
-from flask import jsonify
+from flask import jsonify, send_file
+import json
+import io
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 server = app.server
@@ -174,14 +176,21 @@ def update_debug_live(n):
 # Callback for Test API button
 @app.callback(
     [Output('test-modal', 'is_open'),
-     Output('api-test-results', 'children')],
+     Output('api-test-results', 'children'),
+     Output('debug-download-data', 'data')],
     [Input('test-api-button', 'n_clicks'),
-     Input('close-test-modal', 'n_clicks')],
-    [State('test-modal', 'is_open')],
+     Input('close-test-modal', 'n_clicks'),
+     Input('download-debug-button', 'n_clicks')],
+    [State('test-modal', 'is_open'),
+     State('debug-download-data', 'data')],
     prevent_initial_call=True
 )
-def toggle_test_modal(test_clicks, close_clicks, is_open):
+def toggle_test_modal(test_clicks, close_clicks, download_clicks, is_open, debug_data):
     ctx = callback_context
+    
+    if ctx.triggered[0]['prop_id'] == 'download-debug-button.n_clicks' and debug_data:
+        # Return the download data
+        return dash.no_update, dash.no_update, dcc.send_string(debug_data, "tiny_api_debug.json")
     
     if ctx.triggered[0]['prop_id'] == 'test-api-button.n_clicks':
         # Execute test directly instead of calling endpoint
@@ -335,10 +344,29 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
             except Exception as e:
                 results.append(f"Error: {str(e)}")
         
-        return True, '\n'.join(results)
+        # Create debug data for download
+        debug_info = {
+            "timestamp": datetime.datetime.now().isoformat() if 'datetime' in globals() else "unknown",
+            "results": results,
+            "token_exists": bool(token),
+            "token_preview": token[:50] + "..." if token else None,
+            "oauth_config": {
+                "client_id": tiny_oauth.client_id,
+                "redirect_uri": tiny_oauth.redirect_uri,
+                "auth_base_url": tiny_oauth.auth_base_url,
+                "api_base_url": tiny_oauth.api_base_url
+            },
+            "environment": {
+                "railway_domain": os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'localhost'),
+                "redis_url": "configured" if os.environ.get('REDIS_URL') else "not_configured",
+                "port": os.environ.get('PORT', '8050')
+            }
+        }
+        
+        return True, '\n'.join(results), json.dumps(debug_info, indent=2)
     
     # Close button clicked
-    return False, ""
+    return False, "", dash.no_update
 
 # Flask route for API testing
 @server.route('/api/test-tiny')

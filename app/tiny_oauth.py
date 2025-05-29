@@ -16,12 +16,17 @@ class TinyOAuth:
         
         # Try Redis, fallback to file storage
         try:
-            self.redis_client = redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379'))
+            redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+            print(f"[DEBUG] Attempting Redis connection: {redis_url}")
+            self.redis_client = redis.from_url(redis_url)
             self.redis_client.ping()
             self.use_redis = True
-        except:
+            print("[DEBUG] Redis connection successful")
+        except Exception as e:
+            print(f"[DEBUG] Redis connection failed: {str(e)}")
             self.use_redis = False
             self.token_file = '/tmp/tiny_tokens.json'
+            print(f"[DEBUG] Using file storage: {self.token_file}")
     
     def get_auth_url(self):
         """Generate OAuth authorization URL"""
@@ -108,24 +113,51 @@ class TinyOAuth:
             'expires_at': expires_at
         }
         
+        print(f"[DEBUG] Storing tokens - use_redis: {self.use_redis}")
+        print(f"[DEBUG] Access token: {tokens['access_token'][:20] if tokens['access_token'] else 'None'}...")
+        
         if self.use_redis:
             # Store in Redis with TTL
-            self.redis_client.setex('tiny_tokens', 86400, json.dumps(tokens))  # 24h TTL
+            try:
+                self.redis_client.setex('tiny_tokens', 86400, json.dumps(tokens))  # 24h TTL
+                print("[DEBUG] Tokens stored in Redis")
+            except Exception as e:
+                print(f"[DEBUG] Redis storage error: {str(e)}")
         else:
             # Store in file
-            with open(self.token_file, 'w') as f:
-                json.dump(tokens, f)
+            try:
+                with open(self.token_file, 'w') as f:
+                    json.dump(tokens, f)
+                print(f"[DEBUG] Tokens stored in file: {self.token_file}")
+            except Exception as e:
+                print(f"[DEBUG] File storage error: {str(e)}")
     
     def _get_stored_tokens(self):
         """Retrieve stored tokens"""
+        print(f"[DEBUG] Getting stored tokens - use_redis: {self.use_redis}")
+        
         if self.use_redis:
-            data = self.redis_client.get('tiny_tokens')
-            if data:
-                return json.loads(data)
+            try:
+                data = self.redis_client.get('tiny_tokens')
+                if data:
+                    tokens = json.loads(data)
+                    print(f"[DEBUG] Retrieved token from Redis: {tokens['access_token'][:20] if tokens.get('access_token') else 'None'}...")
+                    return tokens
+                else:
+                    print("[DEBUG] No tokens in Redis")
+            except Exception as e:
+                print(f"[DEBUG] Redis retrieval error: {str(e)}")
         else:
             if os.path.exists(self.token_file):
-                with open(self.token_file, 'r') as f:
-                    return json.load(f)
+                try:
+                    with open(self.token_file, 'r') as f:
+                        tokens = json.load(f)
+                    print(f"[DEBUG] Retrieved token from file: {tokens['access_token'][:20] if tokens.get('access_token') else 'None'}...")
+                    return tokens
+                except Exception as e:
+                    print(f"[DEBUG] File retrieval error: {str(e)}")
+            else:
+                print(f"[DEBUG] Token file does not exist: {self.token_file}")
         return None
     
     def fetch_product(self, search_term):

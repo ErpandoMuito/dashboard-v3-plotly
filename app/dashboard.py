@@ -115,11 +115,14 @@ def create_dashboard_layout():
             dbc.ModalBody([
                 html.Pre(id="api-test-results", style={'whiteSpace': 'pre-wrap', 'fontSize': '12px'})
             ]),
-            dbc.ModalFooter(
+            dbc.ModalFooter([
+                dbc.Button("Download Debug", id="download-debug-button", color="primary", className="me-2", n_clicks=0),
                 dbc.Button("Close", id="close-test-modal", className="ms-auto", n_clicks=0)
-            ),
+            ]),
         ], id="test-modal", size="lg", is_open=False),
         
-        # Store for API test
-        dcc.Store(id='api-test-trigger')
+        # Store for API test and debug download
+        dcc.Store(id='api-test-trigger'),
+        dcc.Store(id='debug-download-data'),
+        dcc.Download(id='download-debug')
     ], fluid=True)
