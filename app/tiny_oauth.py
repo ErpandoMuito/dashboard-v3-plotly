@@ -17,15 +17,25 @@ class TinyOAuth:
         custom_domain = os.environ.get('APP_DOMAIN')
         railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
         
-        if custom_domain:
-            self.redirect_uri = f"https://{custom_domain}/"
-        elif railway_domain:
-            self.redirect_uri = f"https://{railway_domain}/"
-        else:
-            # Fallback to your custom domain
-            self.redirect_uri = "https://pxn.app.br/"
+        # Use the original Railway domain for now while DNS propagates
+        # TODO: Switch back to custom domain after DNS is fully propagated and OAuth app is updated
+        self.redirect_uri = "https://web-production-e80e8.up.railway.app/"
+        
+        # Future implementation when DNS is ready:
+        # if custom_domain:
+        #     self.redirect_uri = f"https://{custom_domain}/"
+        # elif railway_domain == 'pxn.app.br':
+        #     self.redirect_uri = f"https://{railway_domain}/"
+        # else:
+        #     self.redirect_uri = "https://web-production-e80e8.up.railway.app/"
         
         print(f"[DEBUG] Using redirect URI: {self.redirect_uri}")
+        
+        # Store alternative redirect URIs for validation
+        self.alternative_redirect_uris = [
+            "https://pxn.app.br/",
+            "https://web-production-e80e8.up.railway.app/"
+        ]
         
         self.auth_base_url = "https://accounts.tiny.com.br/realms/tiny/protocol/openid-connect"
         self.api_base_url = "https://api.tiny.com.br/api/v3"
