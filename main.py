@@ -479,7 +479,7 @@ def toggle_test_modal(test_clicks, close_clicks, is_open):
 def ultra_debug(n_clicks):
     if n_clicks:
         print("[ULTRA DEBUG] Starting ultra verbose debug...")
-        debug_data = tiny_oauth.ultra_verbose_debug()
+        debug_data = tiny_oauth.debug_api_connection()
         
         # Format for display
         formatted_output = json.dumps(debug_data, indent=2)

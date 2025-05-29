@@ -29,7 +29,7 @@ class TinyOAuth:
         # else:
         #     self.redirect_uri = "https://web-production-e80e8.up.railway.app/"
         
-        print(f"[DEBUG] Using redirect URI: {self.redirect_uri}")
+        print(f"[OAuth] Redirect URI: {self.redirect_uri}")
         
         # Store alternative redirect URIs for validation
         self.alternative_redirect_uris = [
@@ -44,20 +44,18 @@ class TinyOAuth:
         # Try Redis, fallback to file storage
         try:
             redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
-            print(f"[DEBUG] Attempting Redis connection: {redis_url}")
             self.redis_client = redis.from_url(redis_url)
             self.redis_client.ping()
             self.use_redis = True
-            print("[DEBUG] Redis connection successful")
+            print("[Storage] Using Redis")
         except Exception as e:
-            print(f"[DEBUG] Redis connection failed: {str(e)}")
             self.use_redis = False
             # Use a persistent directory instead of /tmp
             import pathlib
             token_dir = pathlib.Path.home() / '.tiny_oauth'
             token_dir.mkdir(exist_ok=True)
             self.token_file = str(token_dir / 'tokens.json')
-            print(f"[DEBUG] Using file storage: {self.token_file}")
+            print(f"[Storage] Using file: {self.token_file}")
     
     def get_auth_url(self):
         """Generate OAuth authorization URL"""
@@ -72,7 +70,7 @@ class TinyOAuth:
             'prompt': 'login'  # Force re-authentication
         }
         
-        print(f"[DEBUG] OAuth scopes requested: {scope}")
+        # OAuth scopes requested: openid
         return f"{self.auth_base_url}/auth?{urlencode(params)}"
     
     def exchange_code_for_token(self, code):
@@ -91,9 +89,7 @@ class TinyOAuth:
             'client_secret': self.client_secret
         }
         
-        print(f"[DEBUG] Token exchange URL: {token_url}")
-        print(f"[DEBUG] Token exchange redirect_uri: {redirect_uri}")
-        print(f"[DEBUG] Token exchange data: {data}")
+        print(f"[Token] Exchanging code at: {token_url}")
         
         try:
             # Add headers that might be required
@@ -103,9 +99,9 @@ class TinyOAuth:
             }
             
             response = requests.post(token_url, data=data, headers=headers)
-            print(f"[DEBUG] Token response status: {response.status_code}")
-            print(f"[DEBUG] Token response headers: {dict(response.headers)}")
-            print(f"[DEBUG] Token response: {response.text}")
+            print(f"[Token] Response: {response.status_code}")
+            if response.status_code != 200:
+                print(f"[Token] Error: {response.text[:200]}")
             
             if response.status_code == 200:
                 token_data = response.json()
@@ -115,16 +111,13 @@ class TinyOAuth:
                 # Parse error response
                 try:
                     error_data = response.json()
-                    print(f"[DEBUG] Token error response: {error_data}")
                     error_msg = error_data.get('error_description', error_data.get('error', 'Unknown error'))
-                    print(f"[DEBUG] Token exchange failed: {error_msg}")
+                    print(f"[Token] Failed: {error_msg}")
                 except:
-                    print(f"[DEBUG] Token exchange failed with status {response.status_code}: {response.text}")
+                    print(f"[Token] Failed with status {response.status_code}")
                     
         except Exception as e:
-            print(f"[DEBUG] Token exchange error: {str(e)}")
-            import traceback
-            print(f"[DEBUG] Traceback: {traceback.format_exc()}")
+            print(f"[Token] Error: {str(e)}")
         
         return None
     
@@ -318,8 +311,8 @@ class TinyOAuth:
                 except Exception as e:
                     print(f"[DEBUG] File removal error: {str(e)}")
     
-    def ultra_verbose_debug(self):
-        """ULTRA VERBOSE debugging - deixar TUDO claro!"""
+    def debug_api_connection(self):
+        """Debug API connection issues"""
         import base64
         import json as json_lib
         from datetime import datetime
@@ -332,14 +325,13 @@ class TinyOAuth:
         # TEST 1: Token Analysis
         token = self.get_access_token()
         if not token:
-            debug_info["tests"].append({"test": "token_check", "result": "NO TOKEN FOUND!"})
+            debug_info["tests"].append({"test": "token_check", "result": "NO TOKEN"})
             return debug_info
         
         debug_info["tests"].append({
             "test": "token_exists", 
             "result": "YES",
-            "token_length": len(token),
-            "token_preview": f"{token[:50]}...{token[-20:]}"
+            "token_length": len(token)
         })
         
         # Decode JWT token completely
@@ -416,18 +408,16 @@ class TinyOAuth:
             "https://erp.tiny.com.br/api/v3",
         ]
         
-        # Test each combination (but limit to avoid timeout)
+        # Test combinations (limited to avoid timeout)
         test_count = 0
-        for base_url in base_urls[:3]:  # Test first 3 base URLs
-            for endpoint in test_endpoints[:5]:  # Test first 5 endpoints
-                for headers in base_headers[:5]:  # Test first 5 header combinations
+        for base_url in base_urls[:2]:  # Test first 2 base URLs
+            for endpoint in test_endpoints[:3]:  # Test first 3 endpoints
+                for headers in base_headers[:3]:  # Test first 3 header combinations
                     test_count += 1
                     test_info = {
                         "test_number": test_count,
-                        "base_url": base_url,
-                        "endpoint": endpoint,
-                        "full_url": f"{base_url}{endpoint}",
-                        "headers": headers
+                        "url": f"{base_url}{endpoint}",
+                        "headers": list(headers.keys())
                     }
                     
                     try:
@@ -439,31 +429,22 @@ class TinyOAuth:
                         )
                         
                         test_info["response"] = {
-                            "status_code": response.status_code,
-                            "reason": response.reason,
-                            "headers": dict(response.headers),
-                            "body_length": len(response.text),
-                            "body": response.text[:1000],  # First 1000 chars
-                            "is_json": False
+                            "status": response.status_code,
+                            "body_preview": response.text[:200]
                         }
                         
-                        # Try to parse as JSON
+                        # Parse JSON if possible
                         try:
-                            json_body = response.json()
-                            test_info["response"]["is_json"] = True
-                            test_info["response"]["json_body"] = json_body
+                            test_info["response"]["json"] = response.json()
                         except:
                             pass
                         
-                        # Special attention to 401 responses
+                        # Analyze 401 errors
                         if response.status_code == 401:
-                            test_info["401_analysis"] = {
-                                "www_authenticate": response.headers.get('WWW-Authenticate', 'NOT PRESENT'),
-                                "body_contains_empresa": 'empresa' in response.text.lower(),
-                                "body_contains_company": 'company' in response.text.lower(),
-                                "body_contains_tenant": 'tenant' in response.text.lower(),
-                                "body_contains_phoenix": 'phoenix' in response.text.lower()
-                            }
+                            test_info["401_keywords"] = [
+                                word for word in ['empresa', 'company', 'tenant', 'phoenix']
+                                if word in response.text.lower()
+                            ]
                         
                     except Exception as e:
                         test_info["response"] = {
@@ -473,31 +454,23 @@ class TinyOAuth:
                     
                     debug_info["tests"].append(test_info)
                     
-                    # If we find a successful response, highlight it!
-                    if test_info.get("response", {}).get("status_code") == 200:
-                        debug_info["SUCCESS_FOUND"] = test_info
+                    # Mark successful responses
+                    if test_info.get("response", {}).get("status") == 200:
+                        debug_info["SUCCESS"] = test_info
                         break
         
-        # TEST 5: Raw curl equivalent
-        import subprocess
-        try:
-            curl_command = [
-                'curl', '-v',
-                '-H', f'Authorization: Bearer {token}',
-                '-H', 'Accept: application/json',
-                'https://api.tiny.com.br/public-api/v3/produtos?limit=1'
-            ]
-            curl_result = subprocess.run(curl_command, capture_output=True, text=True, timeout=5)
-            debug_info["curl_test"] = {
-                "command": ' '.join(curl_command),
-                "stdout": curl_result.stdout[:500],
-                "stderr": curl_result.stderr[:500],
-                "return_code": curl_result.returncode
-            }
-        except Exception as e:
-            debug_info["curl_test"] = {"error": str(e)}
+        # TEST 5: Summary
+        success_count = sum(1 for t in debug_info["tests"] if t.get("response", {}).get("status") == 200)
+        debug_info["summary"] = {
+            "total_tests": test_count,
+            "successful": success_count,
+            "failed": test_count - success_count
+        }
         
         return debug_info
+    
+    # Backward compatibility
+    ultra_verbose_debug = debug_api_connection
     
     def fetch_product(self, search_term):
         """
@@ -516,7 +489,7 @@ class TinyOAuth:
         # First try local database
         local_product = get_product_by_code(search_term)
         if local_product:
-            print(f"[DEBUG] Found product locally: {local_product}")
+            print(f"[DB] Found product: {local_product['name']}")
             product_id = local_product['id']
         else:
             # Try to parse as ID
@@ -527,7 +500,7 @@ class TinyOAuth:
         
         token = self.get_access_token()
         if not token:
-            print("[DEBUG] No access token available")
+            print("[API] No token available")
             return None
             
         # According to the API documentation, we need to get the empresa ID from the token
@@ -547,9 +520,8 @@ class TinyOAuth:
                 token_data = json_lib.loads(decoded)
                 # Try to extract empresa ID from token claims
                 empresa_id = token_data.get('empresa_id') or token_data.get('emp_id') or token_data.get('company_id')
-                print(f"[DEBUG] Token claims: {list(token_data.keys())}")
         except Exception as e:
-            print(f"[DEBUG] Error decoding token for empresa ID: {str(e)}")
+            pass  # Skip empresa ID extraction
         
         headers = {
             'Authorization': f'Bearer {token}',
@@ -560,22 +532,20 @@ class TinyOAuth:
         # Method 1: Try direct ID search if we have an ID
         if product_id:
             url = f"{self.api_base_url}/produtos/{product_id}"
-            print(f"[DEBUG] Trying direct ID search: {url}")
+            print(f"[API] GET {url}")
             
             try:
-                print(f"[DEBUG] Request URL: {url}")
-                print(f"[DEBUG] Request Headers: {headers}")
                 response = requests.get(url, headers=headers)
-                print(f"[DEBUG] Response Status: {response.status_code}")
-                print(f"[DEBUG] Response Headers: {dict(response.headers)}")
-                print(f"[DEBUG] Response Body: {response.text}")
+                print(f"[API] Response: {response.status_code}")
+                if response.status_code != 200:
+                    print(f"[API] Error: {response.text[:100]}")
                 
                 if response.status_code == 200:
                     data = response.json()
                     # V3 returns single product, not array
                     return {"data": [data], "registros": 1}
                 elif response.status_code == 401:
-                    print("[DEBUG] Token expired, attempting refresh")
+                    print("[Auth] Token expired, refreshing...")
                     # Try to refresh token
                     new_token = self._refresh_token(self._get_stored_tokens().get('refresh_token'))
                     if new_token:
@@ -585,7 +555,7 @@ class TinyOAuth:
                             data = response.json()
                             return {"data": [data], "registros": 1}
             except Exception as e:
-                print(f"[DEBUG] Error in ID search: {str(e)}")
+                print(f"[API] ID search error: {str(e)}")
         
         # Method 2: Try search by code
         url = f"{self.api_base_url}/produtos"
@@ -595,21 +565,16 @@ class TinyOAuth:
             'codigo': search_term
         }
         
-        print(f"[DEBUG] Trying code search: {url}")
-        print(f"[DEBUG] Request Params: {params}")
+        print(f"[API] Search by code: {search_term}")
         
         try:
-            print(f"[DEBUG] Request Headers: {headers}")
             response = requests.get(url, headers=headers, params=params)
-            print(f"[DEBUG] Full URL: {response.url}")
-            print(f"[DEBUG] Response Status: {response.status_code}")
-            print(f"[DEBUG] Response Headers: {dict(response.headers)}")
-            print(f"[DEBUG] Response Body: {response.text}")
+            print(f"[API] Response: {response.status_code}")
             
             if response.status_code == 200:
                 return response.json()
         except Exception as e:
-            print(f"[DEBUG] Error in code search: {str(e)}")
+            print(f"[API] Code search error: {str(e)}")
         
         # Method 3: Try search by name
         params = {
@@ -618,20 +583,15 @@ class TinyOAuth:
             'nome': search_term
         }
         
-        print(f"[DEBUG] Trying name search: {url}")
-        print(f"[DEBUG] Request Params: {params}")
+        print(f"[API] Search by name: {search_term}")
         
         try:
-            print(f"[DEBUG] Request Headers: {headers}")
             response = requests.get(url, headers=headers, params=params)
-            print(f"[DEBUG] Full URL: {response.url}")
-            print(f"[DEBUG] Response Status: {response.status_code}")
-            print(f"[DEBUG] Response Headers: {dict(response.headers)}")
-            print(f"[DEBUG] Response Body: {response.text}")
+            print(f"[API] Response: {response.status_code}")
             
             if response.status_code == 200:
                 return response.json()
         except Exception as e:
-            print(f"[DEBUG] Error in name search: {str(e)}")
+            print(f"[API] Name search error: {str(e)}")
         
         return None
