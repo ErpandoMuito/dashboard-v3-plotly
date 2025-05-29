@@ -107,7 +107,6 @@ def create_dashboard_layout():
                     ])
                 ], className="mt-4")
             ], width=12, md=6)
-        ])
         ]),
         
         # Modal for API test results
