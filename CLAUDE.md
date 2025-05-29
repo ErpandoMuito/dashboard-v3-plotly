@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 3. **Prefer concise code**: Write minimal, concise code. Whenever possible, write fewer lines while maintaining clarity and functionality. Smaller, more precise and useful code is better than verbose code.
 
-4. **Git branch discipline**: Always check the project's branch structure. If a develop branch exists, use it for development. NEVER do 'git push' to main or prod without explicit authorization. Always ask 'Can I push to [branch]?' before pushing to main branches.
+4. **Git branch discipline**: Always check the project's branch structure. If a develop branch exists, use it for development. Push to develop is always allowed without asking. NEVER do 'git push' to main or prod without explicit authorization. Always ask 'Can I push to main?' before pushing to production branches.
 
 ## Commands
 
