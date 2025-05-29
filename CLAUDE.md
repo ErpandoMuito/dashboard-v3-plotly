@@ -77,3 +77,49 @@ The app uses session-based authentication via `dcc.Store` and supports automatic
 - **Procfile**: `web: gunicorn main:server`
 - **railway.json**: Specifies NIXPACKS builder and start command
 - Auto-deploys on push to GitHub branches
+
+## Tiny API V3 Reference
+
+API Documentation: https://erp.tiny.com.br/public-api/v3/swagger/
+
+### Key Endpoints
+
+**1. Produtos (Products)**
+- GET /api/v3/produtos - List products
+  - Query params: pagina, numeroRegistros, codigo, nome
+- GET /api/v3/produtos/{id} - Get product by ID
+- POST /api/v3/produtos - Create product
+- PUT /api/v3/produtos/{id} - Update product
+
+**2. Estoque (Stock/Inventory)**
+- GET /api/v3/estoque/{idProduto} - Get product stock
+- POST /api/v3/estoque/{idProduto} - Update product stock
+
+**3. Contas a Pagar (Accounts Payable)**
+- GET /api/v3/contas-pagar - List payables
+  - Query params: nomeCliente, situacao, dataInicialEmissao, dataFinalEmissao
+  - Situacao values: aberto, cancelada, pago, parcialmente_pago
+- POST /api/v3/contas-pagar - Create payable
+- GET /api/v3/contas-pagar/{id} - Get specific payable
+
+**4. Contas a Receber (Accounts Receivable)**
+- GET /api/v3/contas-receber - List receivables
+  - Similar query params to contas-pagar
+- POST /api/v3/contas-receber - Create receivable
+- PUT /api/v3/contas-receber/{id} - Update receivable
+- POST /api/v3/contas-receber/{id}/baixar - Process payment
+
+### Authentication Headers
+All requests require:
+- Authorization: Bearer {access_token}
+- Accept: application/json
+
+### Common Response Structure
+```json
+{
+  "data": [...],
+  "pagina": 1,
+  "totalPaginas": 10,
+  "registros": 100
+}
+```
