@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 class TinyOAuth:
     def __init__(self):
         self.client_id = "tiny-api-0ec9fd177624e0c733a68cf61284a695e4f0d27f-1748519501"
-        self.client_secret = "qTOeIJ39VTV6nB6DsxFrm8bZcVZ9qTNY"
+        self.client_secret = "qTOelJ39VTV6nB6DsxFrm8bZcVZ9qTNY"
         self.redirect_uri = "https://web-production-e80e8.up.railway.app/"
         self.auth_base_url = "https://accounts.tiny.com.br/realms/tiny/protocol/openid-connect"
         self.api_base_url = "https://api.tiny.com.br/api/v3"
